@@ -1,0 +1,6 @@
+# Cargo.lock is regenerated locally by cargo; the vendored crates are published
+# as libraries, and dropping it keeps `just sync` deterministic.
+/react-compiler/Cargo.lock
+
+# Build artifacts
+/react-compiler/target/
