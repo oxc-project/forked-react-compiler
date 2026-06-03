@@ -1,5 +1,5 @@
 [package]
-name = "react_compiler_napi"
+name = "oxc_react_compiler_napi"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,8 +9,8 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { version = "2", features = ["napi4"] }
 napi-derive = "2"
-react_compiler = { path = "../../../crates/react_compiler" }
-react_compiler_ast = { path = "../../../crates/react_compiler_ast" }
+oxc_react_compiler = { path = "../../../crates/oxc_react_compiler" }
+oxc_react_compiler_ast = { path = "../../../crates/oxc_react_compiler_ast" }
 serde = "1"
 serde_json = { version = "1", features = ["unbounded_depth"] }
 

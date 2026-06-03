@@ -26,16 +26,16 @@ Arguments:
 
 | TypeScript Path | Rust Crate |
 |---|---|
-| `src/HIR/` (excluding `BuildHIR.ts`, `HIRBuilder.ts`) | `react_compiler_hir` |
-| `src/HIR/BuildHIR.ts`, `src/HIR/HIRBuilder.ts` | `react_compiler_lowering` |
-| `src/Babel/`, `src/Entrypoint/` | `react_compiler` |
-| `src/CompilerError.ts` | `react_compiler_diagnostics` |
-| `src/ReactiveScopes/` | `react_compiler_reactive_scopes` |
-| `src/<Name>/` | `react_compiler_<name>` (1:1, e.g., `src/Optimization/` -> `react_compiler_optimization`) |
+| `src/HIR/` (excluding `BuildHIR.ts`, `HIRBuilder.ts`) | `oxc_react_compiler_hir` |
+| `src/HIR/BuildHIR.ts`, `src/HIR/HIRBuilder.ts` | `oxc_react_compiler_lowering` |
+| `src/Babel/`, `src/Entrypoint/` | `oxc_react_compiler` |
+| `src/CompilerError.ts` | `oxc_react_compiler_diagnostics` |
+| `src/ReactiveScopes/` | `oxc_react_compiler_reactive_scopes` |
+| `src/<Name>/` | `oxc_react_compiler_<name>` (1:1, e.g., `src/Optimization/` -> `oxc_react_compiler_optimization`) |
 
 3. Check if the pass is already ported:
    - Check if the corresponding Rust file exists in the target crate
-   - Check if `compiler/crates/react_compiler/src/entrypoint/pipeline.rs` already calls it
+   - Check if `compiler/crates/oxc_react_compiler/src/entrypoint/pipeline.rs` already calls it
    - If both are true, report the pass is already ported and stop
 
 ## Step 2: Gather context
@@ -45,9 +45,9 @@ Read the following files (all reads happen in main context):
 1. **Architecture guide**: `compiler/docs/rust-port/rust-port-architecture.md`
 2. **Pass documentation**: Check `compiler/packages/babel-plugin-react-compiler/docs/passes/` for docs about this pass
 3. **TypeScript source**: All TypeScript source files for the pass + any helpers imported from the same folder
-4. **Rust pipeline**: `compiler/crates/react_compiler/src/entrypoint/pipeline.rs`
-5. **Rust HIR types**: Key type files in `compiler/crates/react_compiler_hir/src/` (especially `hir.rs`, `environment.rs`)
-6. **Rust reactive types**: For reactive passes, also read `compiler/crates/react_compiler_hir/src/reactive_function.rs`
+4. **Rust pipeline**: `compiler/crates/oxc_react_compiler/src/entrypoint/pipeline.rs`
+5. **Rust HIR types**: Key type files in `compiler/crates/oxc_react_compiler_hir/src/` (especially `hir.rs`, `environment.rs`)
+6. **Rust reactive types**: For reactive passes, also read `compiler/crates/oxc_react_compiler_hir/src/reactive_function.rs`
 7. **Target crate**: If the target crate already exists, read its `Cargo.toml`, `src/lib.rs`, and existing files to understand the current structure
 
 ## Step 3: Create implementation plan

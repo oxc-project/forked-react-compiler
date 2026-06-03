@@ -1,0 +1,20 @@
+[package]
+name = "oxc_react_compiler"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+oxc_react_compiler_ast = { path = "../oxc_react_compiler_ast" }
+oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics" }
+oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir" }
+oxc_react_compiler_inference = { path = "../oxc_react_compiler_inference" }
+oxc_react_compiler_lowering = { path = "../oxc_react_compiler_lowering" }
+oxc_react_compiler_optimization = { path = "../oxc_react_compiler_optimization" }
+oxc_react_compiler_reactive_scopes = { path = "../oxc_react_compiler_reactive_scopes" }
+oxc_react_compiler_ssa = { path = "../oxc_react_compiler_ssa" }
+oxc_react_compiler_typeinference = { path = "../oxc_react_compiler_typeinference" }
+oxc_react_compiler_validation = { path = "../oxc_react_compiler_validation" }
+indexmap = "2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
