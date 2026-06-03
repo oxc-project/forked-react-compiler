@@ -123,18 +123,18 @@ bash compiler/scripts/test-internal-files.sh <config-path> <source-root> [flags]
 
 | Crate | Purpose |
 |-------|---------|
-| `react_compiler` | Main entrypoint, pipeline orchestration |
-| `react_compiler_ast` | Babel AST types + serde |
-| `react_compiler_hir` | HIR types, environment, visitors |
-| `react_compiler_lowering` | BuildHIR, HIRBuilder (AST → HIR) |
-| `react_compiler_inference` | Mutation/aliasing/type inference |
-| `react_compiler_optimization` | Optimization passes |
-| `react_compiler_validation` | Validation passes |
-| `react_compiler_reactive_scopes` | Reactive scope building + codegen |
-| `react_compiler_diagnostics` | Error types, code frames |
-| `react_compiler_e2e_cli` | E2E test binary |
-| `react_compiler_swc` | SWC frontend |
-| `react_compiler_oxc` | OXC frontend |
+| `oxc_react_compiler` | Main entrypoint, pipeline orchestration |
+| `oxc_react_compiler_ast` | Babel AST types + serde |
+| `oxc_react_compiler_hir` | HIR types, environment, visitors |
+| `oxc_react_compiler_lowering` | BuildHIR, HIRBuilder (AST → HIR) |
+| `oxc_react_compiler_inference` | Mutation/aliasing/type inference |
+| `oxc_react_compiler_optimization` | Optimization passes |
+| `oxc_react_compiler_validation` | Validation passes |
+| `oxc_react_compiler_reactive_scopes` | Reactive scope building + codegen |
+| `oxc_react_compiler_diagnostics` | Error types, code frames |
+| `oxc_react_compiler_e2e_cli` | E2E test binary |
+| `oxc_react_compiler_swc` | SWC frontend |
+| `oxc_react_compiler_oxc` | OXC frontend |
 
 ### Common Cargo Patterns
 

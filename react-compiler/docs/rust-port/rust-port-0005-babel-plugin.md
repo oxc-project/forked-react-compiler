@@ -89,7 +89,7 @@ pub fn compile(
     let scope: ScopeInfo = serde_json::from_str(&scope_json)?;
     let opts: PluginOptions = serde_json::from_str(&options_json)?;
 
-    let result = react_compiler::compile_program(ast, scope, opts);
+    let result = oxc_react_compiler::compile_program(ast, scope, opts);
 
     Ok(serde_json::to_string(&result)?)
 }
@@ -582,7 +582,7 @@ The bridge uses [napi-rs](https://napi.rs/) to expose the Rust `compile` functio
 The bridge passes JSON strings across the NAPI boundary. This is the simplest approach and provides several benefits:
 
 - **Debuggable**: JSON can be logged, inspected, and round-trip tested
-- **Consistent with existing infrastructure**: The `react_compiler_ast` crate already handles JSON serde with all 1714 test fixtures passing
+- **Consistent with existing infrastructure**: The `oxc_react_compiler_ast` crate already handles JSON serde with all 1714 test fixtures passing
 - **No schema coupling**: The JS side doesn't need generated bindings — just `JSON.stringify`/`JSON.parse`
 - **Adequate performance**: For file-level granularity (one call per file), JSON serialization overhead is negligible compared to compilation time
 
@@ -663,7 +663,7 @@ This architecture is designed to support future OXC and SWC integrations with mi
 
 ### Common Boundary: Babel JSON AST
 
-All integrations serialize to the same Babel JSON AST format that the `react_compiler_ast` crate expects. This means:
+All integrations serialize to the same Babel JSON AST format that the `oxc_react_compiler_ast` crate expects. This means:
 
 - **OXC integration**: A Rust transform that converts OXC's native AST → Babel JSON AST → calls `compile()` → converts result back to OXC AST. Since both are Rust, this can use the struct types directly (no JSON step needed for the Rust→Rust path — just type conversion).
 - **SWC integration**: A Rust transform (native or WASM plugin) that converts SWC's AST → Babel JSON AST → calls `compile()` → converts result back.

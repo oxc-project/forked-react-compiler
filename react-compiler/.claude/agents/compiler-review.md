@@ -20,11 +20,11 @@ You will receive a diff of changed Rust files. For each changed file, you must:
 
 | Rust Crate | TypeScript Path |
 |---|---|
-| `react_compiler_hir` | `src/HIR/` (excluding `BuildHIR.ts`, `HIRBuilder.ts`) |
-| `react_compiler_lowering` | `src/HIR/BuildHIR.ts`, `src/HIR/HIRBuilder.ts` |
-| `react_compiler` | `src/Babel/`, `src/Entrypoint/` |
-| `react_compiler_diagnostics` | `src/CompilerError.ts` |
-| `react_compiler_<name>` | `src/<Name>/` (1:1, e.g., `react_compiler_optimization` -> `src/Optimization/`) |
+| `oxc_react_compiler_hir` | `src/HIR/` (excluding `BuildHIR.ts`, `HIRBuilder.ts`) |
+| `oxc_react_compiler_lowering` | `src/HIR/BuildHIR.ts`, `src/HIR/HIRBuilder.ts` |
+| `oxc_react_compiler` | `src/Babel/`, `src/Entrypoint/` |
+| `oxc_react_compiler_diagnostics` | `src/CompilerError.ts` |
+| `oxc_react_compiler_<name>` | `src/<Name>/` (1:1, e.g., `oxc_react_compiler_optimization` -> `src/Optimization/`) |
 
 Within a crate, Rust filenames use `snake_case.rs` corresponding to `PascalCase.ts` or `camelCase.ts` in the TS source. When multiple TS files exist in the mapped folder, match by comparing exported types/functions to the Rust file's contents.
 

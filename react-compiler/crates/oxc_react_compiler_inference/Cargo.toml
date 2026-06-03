@@ -1,0 +1,13 @@
+[package]
+name = "oxc_react_compiler_inference"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir" }
+oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics" }
+oxc_react_compiler_lowering = { path = "../oxc_react_compiler_lowering" }
+oxc_react_compiler_optimization = { path = "../oxc_react_compiler_optimization" }
+oxc_react_compiler_ssa = { path = "../oxc_react_compiler_ssa" }
+oxc_react_compiler_utils = { path = "../oxc_react_compiler_utils" }
+indexmap = "2"

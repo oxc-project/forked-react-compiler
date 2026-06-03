@@ -14,7 +14,7 @@ Current test status: Pass 1717/1717, Code 1716/1717, Snap 1717/1718.
   ```typescript
   const useMemoCacheIdentifier = fn.env.programContext.addMemoCacheImport().name;
   ```
-- **Rust**: `react_compiler_reactive_scopes/src/codegen_reactive_function.rs:179`
+- **Rust**: `oxc_react_compiler_reactive_scopes/src/codegen_reactive_function.rs:179`
   ```rust
   callee: Box::new(Expression::Identifier(make_identifier("useMemoCache"))),
   ```

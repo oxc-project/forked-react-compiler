@@ -1,19 +1,19 @@
-# Plan: `react_compiler_oxc` — OXC Frontend for React Compiler
+# Plan: `oxc_react_compiler_oxc` — OXC Frontend for React Compiler
 
 ## Context
 
-The Rust React Compiler (`compiler/crates/`) currently accepts Babel-format AST (`react_compiler_ast::File`) + scope info (`ScopeInfo`) and compiles via `compile_program()`. The only frontend is a Babel NAPI bridge (`compiler/packages/babel-plugin-react-compiler-rust/`). This plan adds an OXC frontend that enables both **build-time code transformation** and **linting** via the OXC ecosystem, all in pure Rust (no JS/NAPI boundary).
+The Rust React Compiler (`compiler/crates/`) currently accepts Babel-format AST (`oxc_react_compiler_ast::File`) + scope info (`ScopeInfo`) and compiles via `compile_program()`. The only frontend is a Babel NAPI bridge (`compiler/packages/babel-plugin-react-compiler-rust/`). This plan adds an OXC frontend that enables both **build-time code transformation** and **linting** via the OXC ecosystem, all in pure Rust (no JS/NAPI boundary).
 
 ## Crate Structure
 
 ```
-compiler/crates/react_compiler_oxc/
+compiler/crates/oxc_react_compiler_oxc/
   Cargo.toml
   src/
     lib.rs              — Public API: transform(), lint(), ReactCompilerRule
     prefilter.rs        — Quick check for React-like function names in OXC AST
-    convert_ast.rs      — OXC AST → react_compiler_ast::File
-    convert_ast_reverse.rs — react_compiler_ast → OXC AST (for applying results)
+    convert_ast.rs      — OXC AST → oxc_react_compiler_ast::File
+    convert_ast_reverse.rs — oxc_react_compiler_ast → OXC AST (for applying results)
     convert_scope.rs    — OXC Semantic → ScopeInfo
     diagnostics.rs      — CompileResult → OxcDiagnostic conversion
 ```
@@ -22,9 +22,9 @@ compiler/crates/react_compiler_oxc/
 
 ```toml
 [dependencies]
-react_compiler_ast = { path = "../react_compiler_ast" }
-react_compiler = { path = "../react_compiler" }
-react_compiler_diagnostics = { path = "../react_compiler_diagnostics" }
+oxc_react_compiler_ast = { path = "../oxc_react_compiler_ast" }
+oxc_react_compiler = { path = "../oxc_react_compiler" }
+oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics" }
 oxc_parser = "..."
 oxc_ast = "..."
 oxc_semantic = "..."
@@ -80,20 +80,20 @@ This is the most natural conversion — both use arena-indexed flat tables with 
 **`program_scope`:** `ScopeId(0)`.
 
 Key files:
-- Target types: `compiler/crates/react_compiler_ast/src/scope.rs`
+- Target types: `compiler/crates/oxc_react_compiler_ast/src/scope.rs`
 - Reference impl: `compiler/packages/babel-plugin-react-compiler-rust/src/scope.ts`
 
-### 3. `convert_ast.rs` — OXC AST → react_compiler_ast::File
+### 3. `convert_ast.rs` — OXC AST → oxc_react_compiler_ast::File
 
 ```rust
 pub fn convert_program(
     program: &oxc_ast::ast::Program,
     source_text: &str,
     comments: &[oxc_ast::Comment],
-) -> react_compiler_ast::File
+) -> oxc_react_compiler_ast::File
 ```
 
-**Approach:** Recursive conversion, one function per AST category (statement, expression, pattern, JSX, etc.). Data is copied out of OXC's arena into owned `react_compiler_ast` types.
+**Approach:** Recursive conversion, one function per AST category (statement, expression, pattern, JSX, etc.). Data is copied out of OXC's arena into owned `oxc_react_compiler_ast` types.
 
 **ConvertCtx:** Holds a line-offset table (built from source_text at init) for computing `Position { line, column, index }` from byte offsets.
 
@@ -102,7 +102,7 @@ pub fn convert_program(
 - `loc` — computed via line-offset table binary search
 
 **Key mappings:**
-| OXC | react_compiler_ast |
+| OXC | oxc_react_compiler_ast |
 |-----|-------------------|
 | `Statement` enum variants | `statements::Statement` variants |
 | `Expression` enum variants | `expressions::Expression` variants |
@@ -111,25 +111,25 @@ pub fn convert_program(
 | `JSXElement/Fragment/etc` | `jsx::*` types |
 | TS type annotations | `Option<Box<serde_json::Value>>` (opaque passthrough) |
 
-**Comments:** Map OXC `Comment { kind, span }` → `react_compiler_ast::common::Comment` (CommentBlock/CommentLine with start/end/value).
+**Comments:** Map OXC `Comment { kind, span }` → `oxc_react_compiler_ast::common::Comment` (CommentBlock/CommentLine with start/end/value).
 
 Key files:
-- Target types: `compiler/crates/react_compiler_ast/src/` (all modules)
+- Target types: `compiler/crates/oxc_react_compiler_ast/src/` (all modules)
 
-### 4. `convert_ast_reverse.rs` — react_compiler_ast → OXC AST
+### 4. `convert_ast_reverse.rs` — oxc_react_compiler_ast → OXC AST
 
 Mirror of `convert_ast.rs`. Converts the compiled Babel-format AST back into OXC AST nodes.
 
 ```rust
 pub fn convert_program_to_oxc<'a>(
-    file: &react_compiler_ast::File,
+    file: &oxc_react_compiler_ast::File,
     allocator: &'a oxc_allocator::Allocator,
 ) -> oxc_ast::ast::Program<'a>
 ```
 
 - Allocates new OXC AST nodes into the provided arena
-- Maps each `react_compiler_ast` type back to its OXC equivalent
-- The `CompileResult::Success { ast, .. }` returns `ast: Option<serde_json::Value>` — first deserialize to `react_compiler_ast::File`, then convert to OXC
+- Maps each `oxc_react_compiler_ast` type back to its OXC equivalent
+- The `CompileResult::Success { ast, .. }` returns `ast: Option<serde_json::Value>` — first deserialize to `oxc_react_compiler_ast::File`, then convert to OXC
 
 This is the most labor-intensive module but avoids the perf cost of re-parsing.
 
@@ -259,7 +259,7 @@ This avoids double-parsing since oxc_linter provides pre-parsed AST and semantic
 - Integration tests: compile fixtures through OXC pipeline, compare output with Babel pipeline
 
 ### Phase 4: Differential testing
-- Cross-validate AST conversion: parse same source with both Babel and OXC, convert both to `react_compiler_ast::File`, diff
+- Cross-validate AST conversion: parse same source with both Babel and OXC, convert both to `oxc_react_compiler_ast::File`, diff
 - Cross-validate scope conversion: compare `ScopeInfo` from both paths
 - Run full fixture suite through both pipelines, compare compiled output
 
@@ -268,5 +268,5 @@ This avoids double-parsing since oxc_linter provides pre-parsed AST and semantic
 1. **Unit tests:** Each module has tests for its conversion logic
 2. **Fixture tests:** Use existing fixtures at `compiler/packages/babel-plugin-react-compiler/src/__tests__/fixtures/compiler/`
 3. **Differential tests:** Compare OXC path output against Babel path output for same inputs
-4. **`cargo test -p react_compiler_oxc`** — run all crate tests
+4. **`cargo test -p oxc_react_compiler_oxc`** — run all crate tests
 5. **Scope correctness:** Most critical — incorrect scope info causes wrong compilation. Snapshot `ScopeInfo` JSON and compare against Babel extraction golden files
