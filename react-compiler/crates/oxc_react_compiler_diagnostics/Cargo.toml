@@ -2,6 +2,8 @@
 name = "oxc_react_compiler_diagnostics"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Rust port of the React Compiler — diagnostics and code frames. Vendored from facebook/react by the oxc project."
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

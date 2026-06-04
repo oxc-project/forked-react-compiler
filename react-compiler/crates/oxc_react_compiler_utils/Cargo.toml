@@ -2,6 +2,8 @@
 name = "oxc_react_compiler_utils"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Rust port of the React Compiler — shared utilities. Vendored from facebook/react by the oxc project."
 
 [dependencies]
 indexmap = "2"

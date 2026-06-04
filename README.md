@@ -12,16 +12,24 @@ It is vendored as a **linear snapshot** rather than a merge-based `git subtree`,
 free of merge commits: each sync re-snapshots upstream's `compiler/` into `react-compiler/` as a
 single ordinary commit (handling additions, edits, and deletions).
 
-Every crate is then prefixed with **`oxc_`** (`react_compiler_oxc` → `oxc_react_compiler_oxc`, etc.)
-so the crates can be published under the oxc namespace. This rename is re-applied automatically on
-every `just sync`.
+After each snapshot, two small Rust tools (re)transform the tree so the crates can be published to
+crates.io under the oxc namespace — re-applied automatically on every `just sync`:
+
+- [`codemod/`](./codemod) — prefixes every crate with **`oxc_`** (`react_compiler_oxc` →
+  `oxc_react_compiler_oxc`, etc.): directories, package names, path deps, and source.
+- [`prepare-publish/`](./prepare-publish) — uses `toml_edit` to set `license` / `version` /
+  `description` on each crate and add a `version` to internal path deps, and downloads React's MIT
+  `LICENSE`.
+
+The publish version is a constant in [`prepare-publish/src/main.rs`](./prepare-publish/src/main.rs)
+(`VERSION`); bump it before publishing, since crates.io rejects re-publishing an existing version.
 
 ## Updating
 
 ```sh
 just import   # one-time: create react-compiler/ (already done)
-just sync     # pull the latest state of PR #36173 into react-compiler/ (re-prefixed)
-just prefix   # (re)apply the oxc_ rename to react-compiler/ in place
+just sync     # pull the latest state of PR #36173, re-transform, and commit
+just prefix   # (re)run codemod + prepare-publish on react-compiler/ in place
 just status   # show which upstream commit is currently vendored
 ```
 

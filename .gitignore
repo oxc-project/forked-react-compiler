@@ -3,4 +3,5 @@
 /react-compiler/Cargo.lock
 
 # Build artifacts
+/target/
 /react-compiler/target/

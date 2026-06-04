@@ -1,0 +1,12 @@
+[package]
+name = "prepare-publish"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "prepare-publish"
+path = "src/main.rs"
+
+[dependencies]
+toml_edit = "0.22"

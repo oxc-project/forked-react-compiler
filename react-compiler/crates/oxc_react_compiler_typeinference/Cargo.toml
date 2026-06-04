@@ -2,8 +2,10 @@
 name = "oxc_react_compiler_typeinference"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Rust port of the React Compiler — type inference. Vendored from facebook/react by the oxc project."
 
 [dependencies]
-oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics" }
-oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir" }
-oxc_react_compiler_ssa = { path = "../oxc_react_compiler_ssa" }
+oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics", version = "0.1.0" }
+oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir", version = "0.1.0" }
+oxc_react_compiler_ssa = { path = "../oxc_react_compiler_ssa", version = "0.1.0" }
