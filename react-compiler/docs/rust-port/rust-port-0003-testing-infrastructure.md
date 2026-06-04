@@ -245,7 +245,7 @@ function main() {
 
 ## Rust Test Binary
 
-### `compiler/crates/forked_react_compiler/src/bin/test_rust_port.rs`
+### `compiler/crates/react_compiler/src/bin/test_rust_port.rs`
 
 A Rust binary in the main compiler crate that mirrors the TS test binary exactly.
 
@@ -265,8 +265,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ast_json = fs::read_to_string(&args[2])?;
     let scope_json = fs::read_to_string(&args[3])?;
 
-    let ast: forked_react_compiler_ast::File = serde_json::from_str(&ast_json)?;
-    let scope: forked_react_compiler_ast::ScopeInfo = serde_json::from_str(&scope_json)?;
+    let ast: react_compiler_ast::File = serde_json::from_str(&ast_json)?;
+    let scope: react_compiler_ast::ScopeInfo = serde_json::from_str(&scope_json)?;
 
     let mut env = Environment::new(/* config matching TS binary: compilationMode="all", target="19", etc. */);
 
@@ -315,7 +315,7 @@ fn run_pipeline(
 }
 ```
 
-**Crate structure**: The test binary lives in whatever crate contains the compiler pipeline (likely `forked_react_compiler` or similar — to be created as passes are ported). It depends on `forked_react_compiler_ast` for the input types.
+**Crate structure**: The test binary lives in whatever crate contains the compiler pipeline (likely `react_compiler` or similar — to be created as passes are ported). It depends on `react_compiler_ast` for the input types.
 
 ---
 
@@ -471,7 +471,7 @@ The TS and Rust test binaries take different inputs:
 
 - **TS binary**: Takes the original fixture path. Parses with `@babel/parser`, runs `@babel/traverse` to build scope info, and calls the existing `lower()` with a real Babel `NodePath`. This is the simplest approach — `lower()` is deeply entangled with Babel's `NodePath` API (`path.get()`, `path.scope.getBinding()`, etc.), so reusing it directly avoids reimplementing those dependencies.
 
-- **Rust binary**: Takes pre-parsed AST JSON + Scope JSON (produced by the step 1 infrastructure). Deserializes into `forked_react_compiler_ast::File` and `ScopeInfo`, then calls a Rust `lower()` that works with these types directly — no Babel dependency.
+- **Rust binary**: Takes pre-parsed AST JSON + Scope JSON (produced by the step 1 infrastructure). Deserializes into `react_compiler_ast::File` and `ScopeInfo`, then calls a Rust `lower()` that works with these types directly — no Babel dependency.
 
 This asymmetry is intentional and acceptable:
 1. The AST JSON round-trip is already validated by step 1 (1714/1714 fixtures pass), so the Rust side sees the same AST data that Babel produced.
@@ -508,7 +508,7 @@ This asymmetry is intentional and acceptable:
 
 **Goal**: Scaffold the Rust binary and a `todo!`-only stub for `lower()` so the end-to-end test loop works immediately — even though every test will fail. This validates the full test infrastructure (fixture discovery, Rust binary invocation, diff output) before any real porting begins.
 
-1. **Create the Rust compiler crate** — `compiler/crates/forked_react_compiler/` with the binary target `test-rust-port`. Depends on `forked_react_compiler_ast` for input types.
+1. **Create the Rust compiler crate** — `compiler/crates/react_compiler/` with the binary target `test-rust-port`. Depends on `react_compiler_ast` for input types.
 
 2. **Stub `lower()`** — Create a `lower()` function with the correct signature that immediately calls `todo!("lower not yet implemented")`. This means the Rust binary will panic for every fixture, producing a non-zero exit code. The test script treats this as a test failure (expected at this stage).
 
@@ -555,7 +555,7 @@ compiler/
     debug-print-reactive.mjs       # Debug ReactiveFunction printer (TS)
     debug-print-error.mjs          # Debug error printer (TS)
   crates/
-    forked_react_compiler/
+    react_compiler/
       Cargo.toml
       src/
         bin/
@@ -563,22 +563,22 @@ compiler/
         lib.rs
         debug_print.rs             # Debug HIR/Reactive/Error printer (Rust)
         pipeline.rs                # Pipeline runner (pass-by-pass)
-    forked_react_compiler_hir/
+    react_compiler_hir/
       Cargo.toml
       src/
         lib.rs                     # HIR types
         environment.rs             # Environment type
-    forked_react_compiler_lowering/
+    react_compiler_lowering/
       Cargo.toml
       src/
         lib.rs                     # pub fn lower() entry point
         build_hir.rs               # Lowering functions
         hir_builder.rs             # HIRBuilder struct
-    forked_react_compiler_diagnostics/
+    react_compiler_diagnostics/
       Cargo.toml
       src/
         lib.rs                     # CompilerError, CompilerDiagnostic, etc.
-    forked_react_compiler_ast/            # Existing AST crate (from step 1)
+    react_compiler_ast/            # Existing AST crate (from step 1)
       ...
 ```
 

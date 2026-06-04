@@ -1,0 +1,28 @@
+[package]
+name = "forked_react_compiler_e2e_cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "react-compiler-e2e"
+path = "src/main.rs"
+
+[dependencies]
+react_compiler = { workspace = true }
+react_compiler_ast = { workspace = true }
+react_compiler_swc = { workspace = true }
+react_compiler_oxc = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+swc_ecma_parser = "35"
+swc_ecma_ast = "21"
+swc_common = "19"
+oxc_parser = "0.121"
+oxc_allocator = "0.121"
+oxc_span = "0.121"
+oxc_semantic = "0.121"
+oxc_codegen = "0.121"
+oxc_diagnostics = "0.121"

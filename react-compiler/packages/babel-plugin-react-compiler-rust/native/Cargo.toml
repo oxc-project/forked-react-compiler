@@ -8,12 +8,13 @@ repository.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
+name = "react_compiler_napi"
 
 [dependencies]
 napi = { version = "2", features = ["napi4"] }
 napi-derive = "2"
-forked_react_compiler = { workspace = true }
-forked_react_compiler_ast = { workspace = true }
+react_compiler = { workspace = true }
+react_compiler_ast = { workspace = true }
 serde = "1"
 serde_json = { version = "1", features = ["unbounded_depth"] }
 

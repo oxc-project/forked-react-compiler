@@ -10,7 +10,7 @@ The reactive function is a tree-structured IR derived from the HIR CFG. `BuildRe
 
 ## 1. Rust Type Representation
 
-**Location**: New file `compiler/crates/forked_react_compiler_hir/src/reactive.rs`, re-exported from `lib.rs`
+**Location**: New file `compiler/crates/react_compiler_hir/src/reactive.rs`, re-exported from `lib.rs`
 
 All types derive `Debug, Clone`.
 
@@ -224,10 +224,10 @@ pub struct PrunedReactiveScopeBlock {
 
 ### Reused Existing Types
 
-All of these are already defined in `forked_react_compiler_hir`:
+All of these are already defined in `react_compiler_hir`:
 - `Place`, `InstructionValue`, `AliasingEffect`, `LogicalOperator`, `ParamPattern`
 - `BlockId`, `ScopeId`, `IdentifierId`, `EvaluationOrder`, `TypeId`, `FunctionId`
-- `SourceLocation` (from `forked_react_compiler_diagnostics`)
+- `SourceLocation` (from `react_compiler_diagnostics`)
 - `ReactiveScope`, `ReactiveScopeDependency`, `ReactiveScopeDeclaration`, `ReactiveScopeEarlyReturn`
 
 ### Key Design Decisions
@@ -242,10 +242,10 @@ All of these are already defined in `forked_react_compiler_hir`:
 
 5. **EvaluationOrder, not InstructionId**: The TS `InstructionId` (evaluation order counter) maps to Rust `EvaluationOrder`. Rust's `InstructionId` is the flat instruction table index (not used in reactive types).
 
-## 2. New Crate: `forked_react_compiler_reactive_scopes`
+## 2. New Crate: `react_compiler_reactive_scopes`
 
 ```
-compiler/crates/forked_react_compiler_reactive_scopes/
+compiler/crates/react_compiler_reactive_scopes/
   Cargo.toml
   src/
     lib.rs
@@ -270,9 +270,9 @@ compiler/crates/forked_react_compiler_reactive_scopes/
     validate_preserved_manual_memoization.rs
 ```
 
-**Cargo.toml dependencies**: `forked_react_compiler_hir`, `forked_react_compiler_diagnostics`, `indexmap`
+**Cargo.toml dependencies**: `react_compiler_hir`, `react_compiler_diagnostics`, `indexmap`
 
-Add to workspace `Cargo.toml` members and as dependency of `forked_react_compiler`.
+Add to workspace `Cargo.toml` members and as dependency of `react_compiler`.
 
 Maps to TS directory: `src/ReactiveScopes/`
 
@@ -300,15 +300,15 @@ Create `compiler/packages/babel-plugin-react-compiler/src/HIR/DebugPrintReactive
 
 ### Rust Side
 
-`compiler/crates/forked_react_compiler_reactive_scopes/src/print_reactive_function.rs`:
+`compiler/crates/react_compiler_reactive_scopes/src/print_reactive_function.rs`:
 
 - Entry point: `pub fn debug_reactive_function(func: &ReactiveFunction, env: &Environment) -> String`
-- Uses the `DebugPrinter` struct pattern from `compiler/crates/forked_react_compiler/src/debug_print.rs`
+- Uses the `DebugPrinter` struct pattern from `compiler/crates/react_compiler/src/debug_print.rs`
 - Must produce output identical to the TS `printDebugReactiveFunction`
 
 ### Shared Print Helpers
 
-Extract these as `pub` from `compiler/crates/forked_react_compiler/src/debug_print.rs` (currently private):
+Extract these as `pub` from `compiler/crates/react_compiler/src/debug_print.rs` (currently private):
 - `format_place(place, env) -> String`
 - `format_identifier(id, env) -> String`
 - `format_type(type_id, env) -> String`
@@ -343,15 +343,15 @@ Extract these as `pub` from `compiler/crates/forked_react_compiler/src/debug_pri
 After `PropagateScopeDependenciesHIR`, transition from HIR to ReactiveFunction:
 
 ```rust
-let mut reactive_fn = forked_react_compiler_reactive_scopes::build_reactive_function(&hir, &env);
-let debug = forked_react_compiler_reactive_scopes::debug_reactive_function(&reactive_fn, &env);
+let mut reactive_fn = react_compiler_reactive_scopes::build_reactive_function(&hir, &env);
+let debug = react_compiler_reactive_scopes::debug_reactive_function(&reactive_fn, &env);
 context.log_debug(DebugLogEntry::new("BuildReactiveFunction", debug));
 
-forked_react_compiler_reactive_scopes::assert_well_formed_break_targets(&reactive_fn)?;
+react_compiler_reactive_scopes::assert_well_formed_break_targets(&reactive_fn)?;
 context.log_debug(DebugLogEntry::new("AssertWellFormedBreakTargets", "ok".to_string()));
 
-forked_react_compiler_reactive_scopes::prune_unused_labels(&mut reactive_fn);
-let debug = forked_react_compiler_reactive_scopes::debug_reactive_function(&reactive_fn, &env);
+react_compiler_reactive_scopes::prune_unused_labels(&mut reactive_fn);
+let debug = react_compiler_reactive_scopes::debug_reactive_function(&reactive_fn, &env);
 context.log_debug(DebugLogEntry::new("PruneUnusedLabels", debug));
 
 // ... etc for each pass
@@ -361,8 +361,8 @@ context.log_debug(DebugLogEntry::new("PruneUnusedLabels", debug));
 
 ### Phase 1 — Foundation
 
-1. Create `reactive.rs` in `forked_react_compiler_hir` with all types from Section 1
-2. Create `forked_react_compiler_reactive_scopes` crate skeleton with `Cargo.toml` and empty `lib.rs`
+1. Create `reactive.rs` in `react_compiler_hir` with all types from Section 1
+2. Create `react_compiler_reactive_scopes` crate skeleton with `Cargo.toml` and empty `lib.rs`
 3. Create TS `DebugPrintReactiveFunction.ts` with verbose format
 4. Extract shared print helpers from `debug_print.rs` as public
 5. Port verbose format to Rust `print_reactive_function.rs`
@@ -373,7 +373,7 @@ context.log_debug(DebugLogEntry::new("PruneUnusedLabels", debug));
 The critical pass (~700 lines). Converts HIR CFG to ReactiveFunction tree.
 
 - **Source**: `compiler/packages/babel-plugin-react-compiler/src/ReactiveScopes/BuildReactiveFunction.ts`
-- **Target**: `compiler/crates/forked_react_compiler_reactive_scopes/src/build_reactive_function.rs`
+- **Target**: `compiler/crates/react_compiler_reactive_scopes/src/build_reactive_function.rs`
 - **Key structures to port**:
   - `Context` class: tracks `emitted: Set<BlockId>`, `scopeFallthroughs: Set<BlockId>`, `#scheduled: Set<BlockId>`, `#catchHandlers: Set<BlockId>`, `#controlFlowStack: Array<ControlFlowTarget>`
   - `Driver` class: `traverseBlock`, `visitBlock`, `visitValueBlock`, `visitValueBlockTerminal`, `visitTestBlock`, `extractValueBlockResult`, `wrapWithSequence`, `visitBreak`, `visitContinue`
@@ -510,12 +510,12 @@ Expand pass table rows #32-#49:
 | 48 | ValidatePreservedManualMemoization | debug | Conditional |
 | 49 | Codegen | ast | |
 
-Remove "BLOCKED" status from #32. Add crate mapping: `src/ReactiveScopes/` -> `forked_react_compiler_reactive_scopes`.
+Remove "BLOCKED" status from #32. Add crate mapping: `src/ReactiveScopes/` -> `react_compiler_reactive_scopes`.
 
 ### `compiler/.claude/skills/compiler-port/SKILL.md`
 
 - **Step 0**: Remove the block on `kind: 'reactive'` passes (currently says "report that test-rust-port only supports `hir` kind passes currently and stop")
-- **Step 1**: Add `src/ReactiveScopes/` -> `forked_react_compiler_reactive_scopes` to the TS-to-Rust crate mapping table
+- **Step 1**: Add `src/ReactiveScopes/` -> `react_compiler_reactive_scopes` to the TS-to-Rust crate mapping table
 - **Step 2**: Add reactive types file to context gathering list
 
 ### `compiler/.claude/agents/port-pass.md`
@@ -527,13 +527,13 @@ Remove "BLOCKED" status from #32. Add crate mapping: `src/ReactiveScopes/` -> `f
 
 | File | Action |
 |------|--------|
-| `compiler/crates/forked_react_compiler_hir/src/reactive.rs` | Create: all reactive types |
-| `compiler/crates/forked_react_compiler_hir/src/lib.rs` | Edit: `pub mod reactive; pub use reactive::*;` |
-| `compiler/crates/forked_react_compiler_reactive_scopes/` | Create: new crate |
+| `compiler/crates/react_compiler_hir/src/reactive.rs` | Create: all reactive types |
+| `compiler/crates/react_compiler_hir/src/lib.rs` | Edit: `pub mod reactive; pub use reactive::*;` |
+| `compiler/crates/react_compiler_reactive_scopes/` | Create: new crate |
 | `compiler/crates/Cargo.toml` (workspace) | Edit: add member |
-| `compiler/crates/forked_react_compiler/Cargo.toml` | Edit: add dependency |
-| `compiler/crates/forked_react_compiler/src/debug_print.rs` | Edit: extract shared helpers as `pub` |
-| `compiler/crates/forked_react_compiler/src/entrypoint/pipeline.rs` | Edit: wire reactive passes |
+| `compiler/crates/react_compiler/Cargo.toml` | Edit: add dependency |
+| `compiler/crates/react_compiler/src/debug_print.rs` | Edit: extract shared helpers as `pub` |
+| `compiler/crates/react_compiler/src/entrypoint/pipeline.rs` | Edit: wire reactive passes |
 | `compiler/packages/.../src/HIR/DebugPrintReactiveFunction.ts` | Create: verbose debug printer |
 | `compiler/packages/.../src/HIR/index.ts` | Edit: export |
 | `compiler/scripts/test-rust-port.ts` | Edit: handle `kind: 'reactive'` |

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Port `BuildHIR.ts` (~4555 lines) and `HIRBuilder.ts` (~955 lines) into Rust equivalents in `compiler/crates/forked_react_compiler_lowering/`. This is the first major compiler pass — it converts a Babel AST + scope info into the HIR control-flow graph representation.
+Port `BuildHIR.ts` (~4555 lines) and `HIRBuilder.ts` (~955 lines) into Rust equivalents in `compiler/crates/react_compiler_lowering/`. This is the first major compiler pass — it converts a Babel AST + scope info into the HIR control-flow graph representation.
 
 The Rust port should be structurally as close to the TypeScript as possible: viewing the TS and Rust side by side, the logic should look, read, and feel similar while working naturally in Rust.
 
@@ -23,18 +23,18 @@ The Rust port should be structurally as close to the TypeScript as possible: vie
 
 ```
 compiler/crates/
-  forked_react_compiler_lowering/
+  react_compiler_lowering/
     Cargo.toml
     src/
       lib.rs              # pub fn lower() entry point
       build_hir.rs        # lowerStatement, lowerExpression, lowerAssignment, etc.
       hir_builder.rs      # HIRBuilder struct
-  forked_react_compiler_hir/
+  react_compiler_hir/
     Cargo.toml
     src/
       lib.rs              # HIR types: HirFunction, BasicBlock, Instruction, Terminal, Place, etc.
       environment.rs      # Environment struct (arenas, counters, config)
-  forked_react_compiler_diagnostics/
+  react_compiler_diagnostics/
     Cargo.toml
     src/
       lib.rs              # CompilerError, CompilerDiagnostic, ErrorCategory, etc.
@@ -43,11 +43,11 @@ compiler/crates/
 ### Dependencies
 
 ```toml
-# forked_react_compiler_lowering/Cargo.toml
+# react_compiler_lowering/Cargo.toml
 [dependencies]
-forked_react_compiler_ast = { path = "../forked_react_compiler_ast" }
-forked_react_compiler_hir = { path = "../forked_react_compiler_hir" }
-forked_react_compiler_diagnostics = { path = "../forked_react_compiler_diagnostics" }
+react_compiler_ast = { path = "../react_compiler_ast" }
+react_compiler_hir = { path = "../react_compiler_hir" }
+react_compiler_diagnostics = { path = "../react_compiler_diagnostics" }
 ```
 
 ---
@@ -56,7 +56,7 @@ forked_react_compiler_diagnostics = { path = "../forked_react_compiler_diagnosti
 
 ### 1. No NodePath — Work Directly with AST Structs + ScopeInfo
 
-The TypeScript `lower()` takes a `NodePath<t.Function>` and uses Babel's traversal API (`path.get()`, `path.scope.getBinding()`, etc.) extensively. The Rust port works with deserialized `forked_react_compiler_ast` structs and the `ScopeInfo` from step 2.
+The TypeScript `lower()` takes a `NodePath<t.Function>` and uses Babel's traversal API (`path.get()`, `path.scope.getBinding()`, etc.) extensively. The Rust port works with deserialized `react_compiler_ast` structs and the `ScopeInfo` from step 2.
 
 **TypeScript pattern:**
 ```typescript
@@ -467,9 +467,9 @@ fn lower_function(builder: &mut HirBuilder, func: &ast::Function) -> LoweredFunc
 
 **Goal**: Crate structure compiles, `lower()` entry point exists, returns `todo!()`.
 
-1. Create `compiler/crates/forked_react_compiler_diagnostics/` with `CompilerDiagnostic`, `CompilerError`, `ErrorCategory`, `CompilerErrorDetail`, `CompilerSuggestionOperation`.
+1. Create `compiler/crates/react_compiler_diagnostics/` with `CompilerDiagnostic`, `CompilerError`, `ErrorCategory`, `CompilerErrorDetail`, `CompilerSuggestionOperation`.
 
-2. Create `compiler/crates/forked_react_compiler_hir/` with core types:
+2. Create `compiler/crates/react_compiler_hir/` with core types:
    - ID newtypes: `BlockId`, `IdentifierId`, `InstructionId` (index into the flat instruction table), `EvaluationOrder` (sequential numbering assigned during `markInstructionIds()` — this was previously called `InstructionId` in the TypeScript compiler), `DeclarationId`, `ScopeId`, `FunctionId`, `TypeId`
    - `HirFunction`, `HIR`, `BasicBlock`, `WipBlock`, `BlockKind`
    - `Instruction`, `InstructionValue` (enum with all ~40 variants, each stubbed as `todo!()` for fields)
@@ -479,7 +479,7 @@ fn lower_function(builder: &mut HirBuilder, func: &ast::Function) -> LoweredFunc
    - `Environment` (counters, arenas, config, errors)
    - `FloatValue(u64)` — wrapper type for f64 values that need `Eq`/`Hash` (stores raw bits via `f64::to_bits()` for deterministic comparison)
 
-3. Create `compiler/crates/forked_react_compiler_lowering/` with:
+3. Create `compiler/crates/react_compiler_lowering/` with:
    - `hir_builder.rs`: `HirBuilder` struct with all methods stubbed
    - `build_hir.rs`: `lower_statement()` and `lower_expression()` with all arms as `todo!()`
    - `lib.rs`: `pub fn lower()` that creates a builder and returns `todo!()`

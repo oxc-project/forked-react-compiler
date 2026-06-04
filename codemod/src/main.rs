@@ -1,13 +1,16 @@
-//! Transforms the freshly-vendored React Compiler tree so the crates can be
-//! published to crates.io. Run on every `just sync`; idempotent.
+//! Prepares the freshly-vendored React Compiler crates for publishing — by editing
+//! ONLY `Cargo.toml` files. Source, directories, and crate import/lib names stay
+//! exactly as upstream (`react_compiler*`); the only thing that changes is the
+//! published `[package] name`, which becomes `forked_react_compiler*`. Run on every
+//! `just sync`; idempotent.
 //!
-//! 1. renames every crate to `forked_react_compiler_*` (dirs, package names, path
-//!    deps, source);
-//! 2. sets up workspace inheritance like the main oxc repo — `[workspace.package]`
-//!    (version/edition/license/description/repository) and `[workspace.dependencies]`
-//!    (internal crates, with versions) — and points each crate at them;
-//! 3. writes React's MIT LICENSE (kept as a local copy and linked in below);
-//! 4. drops Cargo.lock (regenerated locally, git-ignored).
+//! Per crate (`Cargo.toml` only):
+//!   - `[package] name`  -> `forked_react_compiler_X`  (the published name)
+//!   - `[lib] name`      -> `react_compiler_X`         (kept, so `use react_compiler_X` still works)
+//!   - inherits version/edition/license/description/repository from `[workspace.package]`
+//!   - internal deps become `{ workspace = true }`
+//! Root `[workspace.dependencies]` maps each import name to its published package:
+//!   `react_compiler_X = { package = "forked_react_compiler_X", version, path }`
 //!
 //! Usage: `codemod [TREE_DIR]`   (default: `react-compiler`)
 
@@ -28,19 +31,18 @@ const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
 /// tool so syncing needs no network for it.
 const LICENSE_TEXT: &str = include_str!("../../LICENSE");
 
-/// File extensions whose contents may reference crate identifiers.
-const EXTS: &[&str] = &["rs", "toml", "md", "ts", "tsx", "js", "mjs", "cjs", "sh"];
-/// Directories to skip while walking the tree.
-const SKIP_DIRS: &[&str] = &["node_modules", "target", ".git"];
-
 /// A workspace member crate.
 struct Member {
-    /// Package name, e.g. `forked_react_compiler_ast`.
-    name: String,
-    /// Path relative to the workspace root, e.g. `crates/forked_react_compiler_ast`.
+    /// Lib/import name, kept as upstream, e.g. `react_compiler_ast`.
+    import_name: String,
+    /// Published package name, e.g. `forked_react_compiler_ast`.
+    package_name: String,
+    /// Path relative to the workspace root, e.g. `crates/react_compiler_ast`.
     rel_path: String,
     /// Absolute path to the crate's `Cargo.toml`.
     manifest: PathBuf,
+    /// Whether the crate has a library target (`src/lib.rs`).
+    has_lib: bool,
 }
 
 fn main() {
@@ -50,94 +52,24 @@ fn main() {
             .unwrap_or_else(|| "react-compiler".to_string()),
     );
 
-    let renamed = rename_crate_dirs(&root.join("crates"));
-    let rewritten = rewrite_idents(&root);
-
     let members = members(&root);
-    set_up_workspace(&root, &members);
+    edit_root_manifest(&root, &members);
+    let internal: BTreeSet<&str> = members.iter().map(|m| m.import_name.as_str()).collect();
+    for member in &members {
+        edit_member_manifest(member, &internal);
+    }
 
     fs::write(root.join("LICENSE"), LICENSE_TEXT).expect("write LICENSE");
-
     let dropped_lock = fs::remove_file(root.join("Cargo.lock")).is_ok();
 
     println!(
-        "codemod: renamed {renamed} dir(s), rewrote {rewritten} file(s), prepared {} crate(s), wrote LICENSE{}",
+        "codemod: published name -> forked_react_compiler_* on {} crate(s) (Cargo.toml only), wrote LICENSE{}",
         members.len(),
         if dropped_lock { ", dropped Cargo.lock" } else { "" },
     );
 }
 
-// --- 1. renaming ------------------------------------------------------------
-
-/// Rename `crates/react_compiler*` -> `crates/forked_react_compiler*`.
-fn rename_crate_dirs(crates: &Path) -> usize {
-    let mut n = 0;
-    let Ok(entries) = fs::read_dir(crates) else {
-        return 0;
-    };
-    for entry in entries.flatten() {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if entry.path().is_dir() && name.starts_with("react_compiler") {
-            fs::rename(entry.path(), crates.join(format!("forked_{name}")))
-                .expect("rename crate dir");
-            n += 1;
-        }
-    }
-    n
-}
-
-/// Recursively rewrite crate identifiers in text files under `dir`.
-fn rewrite_idents(dir: &Path) -> usize {
-    let mut count = 0;
-    let Ok(entries) = fs::read_dir(dir) else {
-        return 0;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if !SKIP_DIRS.contains(&name.as_str()) {
-                count += rewrite_idents(&path);
-            }
-        } else if path
-            .extension()
-            .and_then(|e| e.to_str())
-            .is_some_and(|e| EXTS.contains(&e))
-        {
-            if let Ok(content) = fs::read_to_string(&path) {
-                let rewritten = prefix_idents(&content);
-                if rewritten != content {
-                    fs::write(&path, rewritten).expect("write file");
-                    count += 1;
-                }
-            }
-        }
-    }
-    count
-}
-
-/// Rename every `react_compiler` identifier to `forked_react_compiler`, without
-/// double-prefixing an existing `forked_react_compiler` (so it is idempotent). The
-/// npm-style hyphenated `react-compiler` is untouched. Uses NUL sentinels that never
-/// occur in text files.
-fn prefix_idents(s: &str) -> String {
-    const SENTINEL: &str = "\u{0}FORKED_RC\u{0}";
-    s.replace("forked_react_compiler", SENTINEL)
-        .replace("react_compiler", "forked_react_compiler")
-        .replace(SENTINEL, "forked_react_compiler")
-}
-
-// --- 2. workspace inheritance (oxc style) -----------------------------------
-
-fn set_up_workspace(root: &Path, members: &[Member]) {
-    edit_root_manifest(root, members);
-    let internal: BTreeSet<&str> = members.iter().map(|m| m.name.as_str()).collect();
-    for member in members {
-        edit_member_manifest(&member.manifest, &internal);
-    }
-}
-
-/// Resolve workspace `members` (expanding a trailing `/*`) to `Member`s, sorted by name.
+/// Resolve workspace `members` (expanding a trailing `/*`) to `Member`s, sorted by import name.
 fn members(root: &Path) -> Vec<Member> {
     let doc = read_doc(&root.join("Cargo.toml"));
     let entries = doc
@@ -163,12 +95,16 @@ fn members(root: &Path) -> Vec<Member> {
         };
         for rel_path in rel_paths {
             let manifest = root.join(&rel_path).join("Cargo.toml");
-            if let Some(name) = package_name(&manifest) {
-                out.push(Member { name, rel_path, manifest });
+            if let Some(raw) = package_name(&manifest) {
+                // Derive the upstream import name (idempotent: strip a prior `forked_`).
+                let import_name = raw.strip_prefix("forked_").unwrap_or(&raw).to_string();
+                let package_name = format!("forked_{import_name}");
+                let has_lib = root.join(&rel_path).join("src/lib.rs").exists();
+                out.push(Member { import_name, package_name, rel_path, manifest, has_lib });
             }
         }
     }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out.sort_by(|a, b| a.import_name.cmp(&b.import_name));
     out
 }
 
@@ -177,7 +113,8 @@ fn package_name(manifest: &Path) -> Option<String> {
     Some(doc.get("package")?.get("name")?.as_str()?.to_string())
 }
 
-/// Add `[workspace.package]` and `[workspace.dependencies]` to the root manifest.
+/// Add `[workspace.package]` and `[workspace.dependencies]` (mapping each import name
+/// to its published package) to the root manifest.
 fn edit_root_manifest(root: &Path, members: &[Member]) {
     let path = root.join("Cargo.toml");
     let mut doc = read_doc(&path);
@@ -192,10 +129,11 @@ fn edit_root_manifest(root: &Path, members: &[Member]) {
     let mut dependencies = Table::new();
     for member in members {
         let mut dep = InlineTable::new();
+        dep.insert("package", Value::from(member.package_name.as_str()));
         dep.insert("version", Value::from(VERSION));
         dep.insert("path", Value::from(member.rel_path.as_str()));
         dep.fmt();
-        dependencies.insert(&member.name, value(dep));
+        dependencies.insert(&member.import_name, value(dep));
     }
 
     let workspace = doc["workspace"]
@@ -207,14 +145,25 @@ fn edit_root_manifest(root: &Path, members: &[Member]) {
     fs::write(&path, doc.to_string()).expect("write workspace Cargo.toml");
 }
 
-/// Inherit publishing fields from the workspace and use `{ workspace = true }`
-/// for internal dependencies.
-fn edit_member_manifest(path: &Path, internal: &BTreeSet<&str>) {
-    let mut doc = read_doc(path);
+/// Rename the published `[package] name`, keep the `[lib] name`, inherit publishing
+/// fields, and point internal deps at the workspace.
+fn edit_member_manifest(member: &Member, internal: &BTreeSet<&str>) {
+    let mut doc = read_doc(&member.manifest);
 
     if let Some(pkg) = doc.get_mut("package").and_then(Item::as_table_mut) {
+        pkg.insert("name", value(member.package_name.as_str()));
         for field in ["version", "edition", "license", "description", "repository"] {
             pkg.insert(field, workspace_inherited());
+        }
+    }
+
+    // Keep the importable crate name as upstream so source needs no changes.
+    if member.has_lib {
+        if doc.get("lib").and_then(Item::as_table).is_none() {
+            doc["lib"] = Item::Table(Table::new());
+        }
+        if let Some(lib) = doc["lib"].as_table_mut() {
+            lib.insert("name", value(member.import_name.as_str()));
         }
     }
 
@@ -235,7 +184,7 @@ fn edit_member_manifest(path: &Path, internal: &BTreeSet<&str>) {
         }
     }
 
-    fs::write(path, doc.to_string()).expect("write manifest");
+    fs::write(&member.manifest, doc.to_string()).expect("write manifest");
 }
 
 /// A dotted `field.workspace = true` item.
@@ -267,8 +216,6 @@ fn workspace_dep(old: &Item) -> Item {
     dep.fmt();
     value(dep)
 }
-
-// --- helpers ----------------------------------------------------------------
 
 fn read_doc(path: &Path) -> DocumentMut {
     fs::read_to_string(path)

@@ -1,6 +1,7 @@
 # This repo vendors the React Compiler (Rust port) from facebook/react PR #36173
-# into ./react-compiler, then renames every crate to `forked_react_compiler_*` and
-# adds the metadata needed to publish them to crates.io.
+# into ./react-compiler, then (editing only Cargo.toml) sets each crate's published
+# name to `forked_react_compiler_*` while keeping the lib/import name, source, and
+# directories as upstream's `react_compiler_*`, and adds metadata to publish to crates.io.
 #
 # The oxc-project org ruleset forbids merge commits, so the vendor is a linear
 # snapshot (not `git subtree`): each `sync` re-extracts upstream's `compiler/`,
@@ -24,7 +25,7 @@ default:
 # One-time import (same operation as sync; kept for discoverability)
 import: sync
 
-# Snapshot react's `compiler/` into ./{{prefix}}, rename crates to forked_react_compiler_*, commit once
+# Snapshot react's `compiler/` into ./{{prefix}}, set published names to forked_react_compiler_*, commit once
 sync:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -44,7 +45,7 @@ sync:
     fi
 
 # Transform the vendored tree for publishing (idempotent; run automatically by `sync`):
-# `codemod` renames every crate to forked_react_compiler_* and sets up workspace deps + metadata.
+# `codemod` sets each crate's published name to forked_react_compiler_* (Cargo.toml only) + workspace deps.
 prefix:
     cargo run --quiet -p codemod -- {{prefix}}
 

@@ -97,7 +97,7 @@ InferMutationAliasingEffects: todo
 
 ## 20260318-143022 Port AnalyseFunctions pass
 
-Ported AnalyseFunctions from TypeScript to Rust. Added new crate forked_react_compiler_analyse_functions.
+Ported AnalyseFunctions from TypeScript to Rust. Added new crate react_compiler_analyse_functions.
 1700/1717 tests passing, 17 failures in edge cases with nested functions.
 
 ## 20260318-141500 Fix SSA phi node ordering
@@ -198,7 +198,7 @@ Launch two subagents **in parallel** to diagnose the failures:
    - **The full test failure output** (copy it verbatim)
    - **Instructions**: Run failing fixtures individually with `bash compiler/scripts/test-rust-port.sh <PassName> <fixture-path> --no-color` to get diffs. Analyze the diffs to determine what the Rust port is doing wrong. Read the corresponding TypeScript source to understand expected behavior. Report findings but do NOT make fixes yet.
    - **Architecture guide path**: `compiler/docs/rust-port/rust-port-architecture.md`
-   - **Pipeline path**: `compiler/crates/forked_react_compiler/src/entrypoint/pipeline.rs`
+   - **Pipeline path**: `compiler/crates/react_compiler/src/entrypoint/pipeline.rs`
 
 After both subagents complete, **synthesize their results** to determine a plan of action. The review may surface porting gaps that explain the test failures, and the failure analysis may reveal issues the review missed. Use both inputs to form a complete picture.
 
@@ -208,7 +208,7 @@ Then launch a single `general-purpose` subagent to fix the failures. The subagen
 2. **The synthesized diagnosis** — both the review findings and the failure analysis
 3. **Instructions**: Fix the test failures in the Rust port. Do NOT re-port from scratch. Use the diagnosis to guide fixes. After fixing, run `bash compiler/scripts/test-rust-port.sh <PassName>` to verify. Repeat until 0 failures or you've made 3 fix attempts without progress.
 4. **Architecture guide path**: `compiler/docs/rust-port/rust-port-architecture.md`
-5. **Pipeline path**: `compiler/crates/forked_react_compiler/src/entrypoint/pipeline.rs`
+5. **Pipeline path**: `compiler/crates/react_compiler/src/entrypoint/pipeline.rs`
 
 After the fix subagent completes:
 1. Re-run `bash compiler/scripts/test-rust-port.sh --json 2>/dev/null` to get updated counts and frontier
@@ -230,7 +230,7 @@ For standard passes, launch a single `general-purpose` subagent with these instr
    a. Read the architecture guide at `compiler/docs/rust-port/rust-port-architecture.md`
    b. Read the pass documentation in `compiler/packages/babel-plugin-react-compiler/docs/passes/`
    c. Find the TypeScript source by following the import in `compiler/packages/babel-plugin-react-compiler/src/Entrypoint/Pipeline.ts`
-   d. Read the Rust pipeline at `compiler/crates/forked_react_compiler/src/entrypoint/pipeline.rs` and existing crate structure
+   d. Read the Rust pipeline at `compiler/crates/react_compiler/src/entrypoint/pipeline.rs` and existing crate structure
    e. Port the pass, create/update crates as needed, wire into pipeline.rs
    f. Run `bash compiler/scripts/test-rust-port.sh <PassName>` and fix failures in a loop until 0 failures (max 5 attempts)
    g. Report: files created/modified, final test count, any remaining issues
