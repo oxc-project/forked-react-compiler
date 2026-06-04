@@ -186,10 +186,13 @@ fn edit_member_manifest(member: &Member, internal: &BTreeSet<&str>, publish: boo
 
     if let Some(pkg) = doc.get_mut("package").and_then(Item::as_table_mut) {
         pkg.insert("name", value(member.package_name.as_str()));
-        pkg.insert("publish", value(publish));
         for field in ["version", "edition", "license", "description", "repository"] {
             pkg.insert(field, workspace_inherited());
         }
+        // Insert `publish` after the inherited fields so the field order is identical
+        // whether the manifest came fresh from upstream or was already transformed
+        // (keeps `just sync` idempotent).
+        pkg.insert("publish", value(publish));
     }
 
     // Keep the importable crate name as upstream so source needs no changes.
