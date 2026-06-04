@@ -11,7 +11,7 @@
 #
 #   just import       # one-time: create ./react-compiler (transformed)
 #   just sync         # update ./react-compiler to the latest PR state (re-transformed)
-#   just prefix       # (re)run codemod on ./react-compiler in place
+#   just codemod      # (re)run codemod on ./react-compiler in place
 #   just check        # cargo check the vendored workspace
 #   just publish-dry  # dry-run publishing the whole set (cargo publish --workspace --dry-run)
 #   just publish      # publish forked_react_compiler + its deps via cargo-release-oxc
@@ -39,7 +39,7 @@ sync:
     git rm -r --cached --quiet --ignore-unmatch {{prefix}}
     rm -rf {{prefix}}
     git read-tree --prefix={{prefix}}/ -u "$tree"
-    just prefix
+    just codemod
     git add -A {{prefix}}
     if git diff --cached --quiet -- {{prefix}}; then
         echo "{{prefix}} already at react {{pr_ref}} @ ${upstream} — nothing to commit."
@@ -49,7 +49,7 @@ sync:
     fi
 
 # (Re)run codemod on ./{{prefix}}: published names, workspace deps, publish flags, LICENSE, oxc_release.toml
-prefix:
+codemod:
     cargo run --quiet -p codemod -- {{prefix}}
 
 # Type-check the vendored workspace
