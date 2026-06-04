@@ -9,12 +9,13 @@
 //!   - `[lib] name`      -> `react_compiler_X`         (kept, so `use react_compiler_X` still works)
 //!   - inherits version/edition/license/description/repository from `[workspace.package]`
 //!   - internal deps become `{ workspace = true }`
+//!   - `publish` = true for `react_compiler` and its (transitive) deps; false for the rest
 //! Root `[workspace.dependencies]` maps each import name to its published package:
 //!   `react_compiler_X = { package = "forked_react_compiler_X", version, path }`
 //!
 //! Usage: `codemod [TREE_DIR]`   (default: `react-compiler`)
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -53,10 +54,11 @@ fn main() {
     );
 
     let members = members(&root);
-    edit_root_manifest(&root, &members);
     let internal: BTreeSet<&str> = members.iter().map(|m| m.import_name.as_str()).collect();
+    let publish = publish_closure(&members, &internal);
+    edit_root_manifest(&root, &members);
     for member in &members {
-        edit_member_manifest(member, &internal);
+        edit_member_manifest(member, &internal, publish.contains(&member.import_name));
     }
 
     fs::write(root.join("LICENSE"), LICENSE_TEXT).expect("write LICENSE");
@@ -145,13 +147,46 @@ fn edit_root_manifest(root: &Path, members: &[Member]) {
     fs::write(&path, doc.to_string()).expect("write workspace Cargo.toml");
 }
 
+/// Crates reachable from `react_compiler` over internal `[dependencies]` /
+/// `[build-dependencies]` — the set to publish — including `react_compiler` itself.
+fn publish_closure(members: &[Member], internal: &BTreeSet<&str>) -> BTreeSet<String> {
+    let mut adjacency: HashMap<String, Vec<String>> = HashMap::new();
+    for member in members {
+        let doc = read_doc(&member.manifest);
+        let mut deps = Vec::new();
+        for section in ["dependencies", "build-dependencies"] {
+            if let Some(table) = doc.get(section).and_then(Item::as_table) {
+                for (key, _) in table.iter() {
+                    if internal.contains(key) {
+                        deps.push(key.to_string());
+                    }
+                }
+            }
+        }
+        adjacency.insert(member.import_name.clone(), deps);
+    }
+
+    let mut closure = BTreeSet::new();
+    let mut queue = VecDeque::from(["react_compiler".to_string()]);
+    while let Some(name) = queue.pop_front() {
+        if !closure.insert(name.clone()) {
+            continue;
+        }
+        if let Some(deps) = adjacency.get(&name) {
+            queue.extend(deps.iter().cloned());
+        }
+    }
+    closure
+}
+
 /// Rename the published `[package] name`, keep the `[lib] name`, inherit publishing
-/// fields, and point internal deps at the workspace.
-fn edit_member_manifest(member: &Member, internal: &BTreeSet<&str>) {
+/// fields, set `publish`, and point internal deps at the workspace.
+fn edit_member_manifest(member: &Member, internal: &BTreeSet<&str>, publish: bool) {
     let mut doc = read_doc(&member.manifest);
 
     if let Some(pkg) = doc.get_mut("package").and_then(Item::as_table_mut) {
         pkg.insert("name", value(member.package_name.as_str()));
+        pkg.insert("publish", value(publish));
         for field in ["version", "edition", "license", "description", "repository"] {
             pkg.insert(field, workspace_inherited());
         }

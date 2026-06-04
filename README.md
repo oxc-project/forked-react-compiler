@@ -21,6 +21,8 @@ crates can be published to crates.io, re-applied automatically on every `just sy
 - sets each crate's published **`[package] name`** to `forked_react_compiler_*` (`react_compiler_oxc`
   → `forked_react_compiler_oxc`, etc.) while keeping `[lib] name = react_compiler_*`, so
   `use react_compiler_*` still compiles unchanged;
+- marks `publish = true` on `react_compiler` and its dependencies, `publish = false` on the rest
+  (`*_oxc`, `*_swc`, `*_napi`, `*_e2e_cli`), so `cargo publish --workspace` publishes just the core;
 - sets up workspace inheritance like the main [oxc](https://github.com/oxc-project/oxc) repo —
   `[workspace.package]` (`version` / `edition` / `license` / `description` / `repository`) and
   `[workspace.dependencies]` (internal crates, with versions) — so each crate uses
