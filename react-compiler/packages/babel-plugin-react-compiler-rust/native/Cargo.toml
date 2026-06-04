@@ -1,5 +1,5 @@
 [package]
-name = "oxc_react_compiler_napi"
+name = "forked_react_compiler_napi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { version = "2", features = ["napi4"] }
 napi-derive = "2"
-oxc_react_compiler = { workspace = true }
-oxc_react_compiler_ast = { workspace = true }
+forked_react_compiler = { workspace = true }
+forked_react_compiler_ast = { workspace = true }
 serde = "1"
 serde_json = { version = "1", features = ["unbounded_depth"] }
 

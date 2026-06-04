@@ -1,0 +1,14 @@
+[package]
+name = "forked_react_compiler_optimization"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[dependencies]
+forked_react_compiler_diagnostics = { workspace = true }
+forked_react_compiler_hir = { workspace = true }
+forked_react_compiler_lowering = { workspace = true }
+forked_react_compiler_ssa = { workspace = true }
+indexmap = "2"

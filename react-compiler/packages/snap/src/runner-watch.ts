@@ -199,7 +199,7 @@ function subscribeTsc(
 export function buildRust(): boolean {
   const compilerRoot = path.join(BABEL_PLUGIN_ROOT, '..', '..');
   try {
-    execSync('cargo build -p oxc_react_compiler_napi', {
+    execSync('cargo build -p forked_react_compiler_napi', {
       cwd: compilerRoot,
       stdio: 'inherit',
     });
@@ -213,8 +213,8 @@ export function buildRust(): boolean {
   const ext = platform === 'darwin' ? 'dylib' : 'so';
   const libName =
     platform === 'darwin'
-      ? 'liboxc_react_compiler_napi.dylib'
-      : 'liboxc_react_compiler_napi.so';
+      ? 'libforked_react_compiler_napi.dylib'
+      : 'libforked_react_compiler_napi.so';
   const sourcePath = path.join(compilerRoot, 'target', 'debug', libName);
   const destPath = path.join(BABEL_PLUGIN_RUST_ROOT, 'native', 'index.node');
 

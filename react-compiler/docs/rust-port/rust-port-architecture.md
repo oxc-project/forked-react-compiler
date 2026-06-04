@@ -140,7 +140,7 @@ Target ~85-95% structural correspondence. A developer should be able to view Typ
 - **Same high-level data flow** through the code. Only deviate where strictly necessary due to data model differences (arenas, borrow checker workarounds, etc.).
 - **Same grouping of types, functions, and "classes" (structs with methods) into files.** A TypeScript file maps to a Rust file with the same logical contents.
 - **Similar filenames, type names, and identifier names**, adjusted for Rust naming conventions (`camelCase` -> `snake_case` for functions/variables, `PascalCase` preserved for types).
-- **Crate structure**: The monolithic `babel-plugin-react-compiler` package is split into crates, roughly 1:1 by top-level folder (e.g., `src/HIR/` -> a crate, `src/Inference/` -> a crate, etc.). We split the lowering logic (BuildHIR and HIRBuilder) into oxc_react_compiler_lowering bc of its complexity.
+- **Crate structure**: The monolithic `babel-plugin-react-compiler` package is split into crates, roughly 1:1 by top-level folder (e.g., `src/HIR/` -> a crate, `src/Inference/` -> a crate, etc.). We split the lowering logic (BuildHIR and HIRBuilder) into forked_react_compiler_lowering bc of its complexity.
 
 Key mechanical translations:
 

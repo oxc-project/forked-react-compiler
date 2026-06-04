@@ -1,0 +1,12 @@
+[package]
+name = "forked_react_compiler_validation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[dependencies]
+indexmap = "2"
+forked_react_compiler_diagnostics = { workspace = true }
+forked_react_compiler_hir = { workspace = true }

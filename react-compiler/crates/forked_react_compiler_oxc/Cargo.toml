@@ -1,0 +1,25 @@
+[package]
+name = "forked_react_compiler_oxc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[dependencies]
+forked_react_compiler_ast = { workspace = true }
+forked_react_compiler = { workspace = true }
+forked_react_compiler_diagnostics = { workspace = true }
+forked_react_compiler_hir = { workspace = true }
+oxc_parser = "0.121"
+oxc_ast = "0.121"
+oxc_ast_visit = "0.121"
+oxc_semantic = "0.121"
+oxc_allocator = "0.121"
+oxc_span = "0.121"
+oxc_diagnostics = "0.121"
+oxc_syntax = "0.121"
+oxc_codegen = "0.121"
+indexmap = { version = "2", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

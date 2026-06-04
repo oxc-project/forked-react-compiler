@@ -1,6 +1,6 @@
 # This repo vendors the React Compiler (Rust port) from facebook/react PR #36173
-# into ./react-compiler, then prefixes every crate with `oxc_` and adds the
-# metadata needed to publish them to crates.io under the oxc namespace.
+# into ./react-compiler, then renames every crate to `forked_react_compiler_*` and
+# adds the metadata needed to publish them to crates.io.
 #
 # The oxc-project org ruleset forbids merge commits, so the vendor is a linear
 # snapshot (not `git subtree`): each `sync` re-extracts upstream's `compiler/`,
@@ -9,7 +9,7 @@
 #
 #   just import   # one-time: create ./react-compiler (transformed)
 #   just sync     # update ./react-compiler to the latest PR state (re-transformed)
-#   just prefix   # (re)run codemod + prepare-publish on ./react-compiler in place
+#   just prefix   # (re)run codemod on ./react-compiler in place
 #   just status   # show which upstream commit is currently vendored
 
 react_repo := "https://github.com/facebook/react.git"
@@ -24,7 +24,7 @@ default:
 # One-time import (same operation as sync; kept for discoverability)
 import: sync
 
-# Snapshot react's `compiler/` into ./{{prefix}}, oxc_-prefix the crates, commit once
+# Snapshot react's `compiler/` into ./{{prefix}}, rename crates to forked_react_compiler_*, commit once
 sync:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -39,12 +39,12 @@ sync:
     if git diff --cached --quiet -- {{prefix}}; then
         echo "{{prefix}} already at react {{pr_ref}} @ ${upstream} — nothing to commit."
     else
-        git commit -q -m "vendor: react-compiler from {{pr_ref}} @ ${upstream} (oxc_-prefixed)"
+        git commit -q -m "vendor: react-compiler from {{pr_ref}} @ ${upstream} (forked_react_compiler)"
         echo "Committed {{prefix}} @ ${upstream}."
     fi
 
 # Transform the vendored tree for publishing (idempotent; run automatically by `sync`):
-# `codemod` oxc_-prefixes every crate and sets up workspace deps + publishing metadata.
+# `codemod` renames every crate to forked_react_compiler_* and sets up workspace deps + metadata.
 prefix:
     cargo run --quiet -p codemod -- {{prefix}}
 

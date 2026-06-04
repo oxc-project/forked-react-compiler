@@ -67,7 +67,7 @@ const RESET = useColor ? '\x1b[0m' : '';
 function derivePassOrder(): string[] {
   const pipelinePath = path.join(
     REPO_ROOT,
-    'compiler/crates/oxc_react_compiler/src/entrypoint/pipeline.rs',
+    'compiler/crates/forked_react_compiler/src/entrypoint/pipeline.rs',
   );
   const content = fs.readFileSync(pipelinePath, 'utf8');
   const matches = [...content.matchAll(/DebugLogEntry::new\("([^"]+)"/g)];
@@ -118,7 +118,7 @@ if (!jsonMode && !failuresMode) {
   console.log('Building Rust native module...');
 }
 try {
-  execSync('~/.cargo/bin/cargo build -p oxc_react_compiler_napi', {
+  execSync('~/.cargo/bin/cargo build -p forked_react_compiler_napi', {
     cwd: path.join(REPO_ROOT, 'compiler/crates'),
     stdio:
       jsonMode || failuresMode ? ['inherit', 'pipe', 'inherit'] : 'inherit',
@@ -132,10 +132,10 @@ try {
 // Copy the built dylib as index.node (Node requires .node extension for native addons)
 const TARGET_DIR = path.join(REPO_ROOT, 'compiler/target/debug');
 const dylib = fs.existsSync(
-  path.join(TARGET_DIR, 'liboxc_react_compiler_napi.dylib'),
+  path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib'),
 )
-  ? path.join(TARGET_DIR, 'liboxc_react_compiler_napi.dylib')
-  : path.join(TARGET_DIR, 'liboxc_react_compiler_napi.so');
+  ? path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib')
+  : path.join(TARGET_DIR, 'libforked_react_compiler_napi.so');
 
 if (!fs.existsSync(dylib)) {
   console.error(

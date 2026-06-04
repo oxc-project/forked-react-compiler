@@ -61,7 +61,7 @@ Each line names the failure mode and a sketch of where to look.
 
 - `lone-surrogate-string-values.js` — TS preserves lone surrogates
 	(`\uD83E`); SWC emits `\uFFFD` because `Wtf8Atom::to_string_lossy()` in
-	`oxc_react_compiler_swc/src/convert_ast.rs::wtf8_to_string` replaces invalid
+	`forked_react_compiler_swc/src/convert_ast.rs::wtf8_to_string` replaces invalid
 	UTF-8 sequences. Real WTF-8 handling work that touches every call site
 	using that helper. Probably needs to detect lone surrogates and emit
 	`\uXXXX` escapes before they hit `String`.
@@ -133,7 +133,7 @@ bash compiler/scripts/test-e2e.sh --no-color --variant babel
 but everything else is unaddressed.
 
 Next step is to enumerate failures and identify OXC-specific clusters
-(likely AST conversion gaps in `oxc_react_compiler_oxc` analogous to the SWC
+(likely AST conversion gaps in `forked_react_compiler_oxc` analogous to the SWC
 work in this stack). Run:
 
 ```bash
