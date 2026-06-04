@@ -118,7 +118,7 @@ log_error, compiler_error_to_info, and log_errors_as_events. 1722/1723 passing.
 ## 20260331-180000 Add MutVisitor trait and refactor AST mutation to use shared walker
 
 Added MutVisitor trait with visit_statement/visit_expression/visit_identifier hooks and
-walk_program_mut/walk_statement_mut/walk_expression_mut free functions to forked_react_compiler_ast.
+walk_program_mut/walk_statement_mut/walk_expression_mut free functions to react_compiler_ast.
 Refactored three groups of manual recursive AST walkers in program.rs (~780 lines) into three
 visitor structs: ReplaceFnVisitor, ReplaceWithGatedVisitor, RenameIdentifierVisitor (~110 lines).
 No test regressions (1721/1723).
@@ -139,7 +139,7 @@ Eliminated ~3,700 lines of duplicated helper code across 30 files. Created canon
 shared implementations for: visitor ID wrappers (visitors.rs), debug printer formatting
 (new print.rs module), predicate helpers (MutableRange::contains, Effect::is_mutable,
 Environment methods), post_dominator_frontier (dominator.rs), is_react_like_name
-(environment.rs), and is_use_operator_type (lib.rs). Also created forked_react_compiler_utils
+(environment.rs), and is_use_operator_type (lib.rs). Also created react_compiler_utils
 crate with generic DisjointSet<K>. All 1717/1717 passing, no regressions.
 
 ## 20260318-111828 Initial orchestrator status
@@ -214,7 +214,7 @@ All 1717 tests passing, 0 failures. Next pass to port: #11 AnalyseFunctions.
 
 ## 20260318-235832 Port AnalyseFunctions pass skeleton
 
-Ported AnalyseFunctions pass (#11) from TypeScript. Created forked_react_compiler_inference crate.
+Ported AnalyseFunctions pass (#11) from TypeScript. Created react_compiler_inference crate.
 Pass skeleton is correct but inner function analysis depends on sub-passes not yet ported.
 1108/1651 passing (543 crash during inner function analysis).
 Commit: 92cc807a9f
@@ -236,7 +236,7 @@ Remaining 549 failures mostly from inner function analysis needing sub-passes.
 
 ## 20260319-025540 Port DeadCodeElimination pass
 
-Ported DeadCodeElimination (#14) from TypeScript into forked_react_compiler_optimization crate.
+Ported DeadCodeElimination (#14) from TypeScript into react_compiler_optimization crate.
 Wired into pipeline and inner function analysis (lower_with_mutation_aliasing).
 DCE 1102/1102, 0 failures. Overall 1168/1717.
 
@@ -378,7 +378,7 @@ Overall: 1637/1717 passing (95.3%).
 Ported the experimental validateNoDerivedComputationsInEffects_exp validation pass
 from TypeScript to Rust. The 13 "ValidateNoSetStateInRender" failures were actually
 caused by this unported pass — the test harness misattributed them to the preceding pass.
-Created validate_no_derived_computations_in_effects.rs (1269 lines) in forked_react_compiler_validation.
+Created validate_no_derived_computations_in_effects.rs (1269 lines) in react_compiler_validation.
 Overall: 1650/1717 passing (96.1%), 67 failures remaining.
 
 ## 20260320-161141 Fix ValidateNoSetStateInEffects — port createControlDominators
@@ -570,10 +570,10 @@ Fixed final 14 code failures + 1 pass-level failure:
 - Use-no-forget: add memo cache import before error check in pipeline (1 fixture)
 ALL TESTS PASSING: Pass 1717/1717, Code 1717/1717.
 
-## 20260328-235900 Remove local visitor copies — use canonical forked_react_compiler_hir::visitors
+## 20260328-235900 Remove local visitor copies — use canonical react_compiler_hir::visitors
 
 Replaced ~1,800 lines of duplicated visitor/iterator match logic across 21 files with
-calls to canonical `forked_react_compiler_hir::visitors` functions. Remaining local functions are
+calls to canonical `react_compiler_hir::visitors` functions. Remaining local functions are
 thin wrappers (e.g., calling canonical and mapping `Place` → `IdentifierId`).
 Added `each_instruction_value_operand_with_functions` to canonical visitors for split-borrow cases.
 All 1717 tests still passing. Pass 1717/1717, Code 1717/1717.
@@ -614,8 +614,8 @@ Pass 1717/1717, Code 1716/1717, Snap 1717/1718. Only remaining: error.todo-missi
 Ported OptimizeForSSR (#13) from TypeScript to Rust. The pass optimizes components for
 SSR by inlining useState/useReducer, removing effects and event handlers, and stripping
 known event handler/ref props from builtin JSX. Gated on outputMode === 'ssr'.
-Created optimize_for_ssr.rs in forked_react_compiler_optimization crate. Added is_plain_object_type
-and is_start_transition_type helpers to forked_react_compiler_hir.
+Created optimize_for_ssr.rs in react_compiler_optimization crate. Added is_plain_object_type
+and is_start_transition_type helpers to react_compiler_hir.
 test-rust-port: 1724/1724, Snap --rust: 1725/1725.
 
 ## 20260402-103329 Fix e2e diagnostic event mismatches — 123→2 failures
@@ -640,7 +640,7 @@ test-rust-port: 1724/1724, e2e babel: 1722/1724, swc: 1584/1724, oxc: 688/1724.
 
 ## 20260401-105521 Move error formatting to Rust, fix JSXAttribute loc in codegen
 
-Moved error formatting from JS to Rust: added code_frame.rs to forked_react_compiler_diagnostics
+Moved error formatting from JS to Rust: added code_frame.rs to react_compiler_diagnostics
 with code frame rendering and format_compiler_error(). Rust now returns pre-formatted error
 messages via formatted_message field on CompilerErrorInfo, eliminating ~160 lines of JS
 formatting code (formatCompilerError, categoryToHeading, printCodeFrame) and the @babel/code-frame

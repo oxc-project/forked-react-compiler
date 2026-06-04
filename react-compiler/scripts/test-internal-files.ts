@@ -121,7 +121,7 @@ const NATIVE_NODE_PATH = path.join(NATIVE_DIR, 'index.node');
 
 console.log('Building Rust native module...');
 try {
-  execSync('~/.cargo/bin/cargo build -p forked_react_compiler_napi', {
+  execSync('~/.cargo/bin/cargo build -p react_compiler_napi', {
     cwd: path.join(REPO_ROOT, 'compiler/crates'),
     stdio: 'inherit',
     shell: true,
@@ -133,10 +133,10 @@ try {
 
 const TARGET_DIR = path.join(REPO_ROOT, 'compiler/target/debug');
 const dylib = fs.existsSync(
-  path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib'),
+  path.join(TARGET_DIR, 'libreact_compiler_napi.dylib'),
 )
-  ? path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib')
-  : path.join(TARGET_DIR, 'libforked_react_compiler_napi.so');
+  ? path.join(TARGET_DIR, 'libreact_compiler_napi.dylib')
+  : path.join(TARGET_DIR, 'libreact_compiler_napi.so');
 
 if (!fs.existsSync(dylib)) {
   console.error(

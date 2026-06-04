@@ -1,0 +1,25 @@
+[package]
+name = "forked_react_compiler_swc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[dependencies]
+react_compiler_ast = { workspace = true }
+react_compiler = { workspace = true }
+react_compiler_diagnostics = { workspace = true }
+react_compiler_hir = { workspace = true }
+swc_ecma_ast = "21"
+swc_ecma_visit = "21"
+swc_common = "19"
+swc_ecma_parser = "35"
+swc_ecma_codegen = "24"
+swc_atoms = "9"
+indexmap = { version = "2", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lib]
+name = "react_compiler_swc"

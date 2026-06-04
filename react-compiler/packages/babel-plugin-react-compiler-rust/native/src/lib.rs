@@ -1,11 +1,11 @@
 use std::time::Instant;
 
 use napi_derive::napi;
-use forked_react_compiler::entrypoint::PluginOptions;
-use forked_react_compiler::entrypoint::compile_program;
-use forked_react_compiler::timing::TimingEntry;
-use forked_react_compiler_ast::File;
-use forked_react_compiler_ast::scope::ScopeInfo;
+use react_compiler::entrypoint::PluginOptions;
+use react_compiler::entrypoint::compile_program;
+use react_compiler::timing::TimingEntry;
+use react_compiler_ast::File;
+use react_compiler_ast::scope::ScopeInfo;
 use serde::Deserialize;
 
 /// Deserialize JSON with no recursion limit (for deeply nested ASTs).
@@ -79,10 +79,10 @@ fn compile_inner(
 
         // Insert NAPI timing entries
         match &mut result {
-            forked_react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
+            react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
                 timing.insert(0, napi_deser_entry);
             }
-            forked_react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
+            react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
                 timing.insert(0, napi_deser_entry);
             }
         }
@@ -93,10 +93,10 @@ fn compile_inner(
             duration_us: compile_duration.as_micros() as u64,
         };
         match &mut result {
-            forked_react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
+            react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
                 timing.push(compile_entry);
             }
-            forked_react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
+            react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
                 timing.push(compile_entry);
             }
         }
