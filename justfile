@@ -1,15 +1,15 @@
 # This repo vendors the React Compiler (Rust port) from facebook/react PR #36173
-# into ./react-compiler, then prefixes every crate with `oxc_` so they can be
-# published to crates.io under the oxc namespace.
+# into ./react-compiler, then prefixes every crate with `oxc_` and adds the
+# metadata needed to publish them to crates.io under the oxc namespace.
 #
 # The oxc-project org ruleset forbids merge commits, so the vendor is a linear
 # snapshot (not `git subtree`): each `sync` re-extracts upstream's `compiler/`,
-# re-applies the `oxc_` rename, and commits once. The rename is re-applied every
-# sync because the snapshot is taken fresh from upstream each time.
+# re-runs the transform tools (./codemod + ./prepare-publish), and commits once.
+# The transform is re-applied every sync because the snapshot is taken fresh.
 #
-#   just import   # one-time: create ./react-compiler (oxc_-prefixed)
-#   just sync     # update ./react-compiler to the latest PR state (re-prefixed)
-#   just prefix   # (re)apply the oxc_ rename to ./react-compiler in place
+#   just import   # one-time: create ./react-compiler (transformed)
+#   just sync     # update ./react-compiler to the latest PR state (re-transformed)
+#   just prefix   # (re)run codemod + prepare-publish on ./react-compiler in place
 #   just status   # show which upstream commit is currently vendored
 
 react_repo := "https://github.com/facebook/react.git"
@@ -43,25 +43,11 @@ sync:
         echo "Committed {{prefix}} @ ${upstream}."
     fi
 
-# (Re)apply the oxc_ crate rename to ./{{prefix}} (idempotent; run automatically by `sync`)
+# Transform the vendored tree for publishing (idempotent; run automatically by `sync`):
+# `codemod` oxc_-prefixes every crate; `prepare-publish` adds license/version/description.
 prefix:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cd {{prefix}}
-    # 1. rename crate directories: crates/react_compiler* -> crates/oxc_react_compiler*
-    for d in crates/react_compiler*; do
-        [ -e "$d" ] || continue
-        mv "$d" "crates/oxc_$(basename "$d")"
-    done
-    # 2. rewrite crate identifiers in manifests, source, scripts, and docs.
-    #    Only the underscore `react_compiler` form is rewritten (npm's hyphenated
-    #    `react-compiler` is untouched); the (?<!oxc_) guard keeps it idempotent.
-    find . -type d \( -name node_modules -o -name target -o -name .git \) -prune -o \
-        -type f \( -name '*.rs' -o -name '*.toml' -o -name '*.md' -o -name '*.ts' \
-                   -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.sh' \) \
-        -exec perl -i -pe 's/(?<!oxc_)react_compiler/oxc_react_compiler/g' {} +
-    # 3. Cargo.lock is regenerated locally by cargo and is git-ignored (keeps `sync` deterministic)
-    rm -f Cargo.lock
+    cargo run --quiet -p codemod -- {{prefix}}
+    cargo run --quiet -p prepare-publish -- {{prefix}}
 
 # Show the upstream commit currently vendored
 status:

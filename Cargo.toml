@@ -1,0 +1,6 @@
+# Tooling workspace for vendoring the React Compiler (see ./justfile).
+# The vendored `react-compiler/` is its own (excluded) workspace.
+[workspace]
+resolver = "2"
+members = ["codemod", "prepare-publish"]
+exclude = ["react-compiler"]
