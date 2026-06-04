@@ -2,8 +2,10 @@
 name = "oxc_react_compiler_validation"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Rust port of the React Compiler — validation passes. Vendored from facebook/react by the oxc project."
 
 [dependencies]
 indexmap = "2"
-oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics" }
-oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir" }
+oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics", version = "0.1.0" }
+oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir", version = "0.1.0" }

@@ -2,12 +2,14 @@
 name = "oxc_react_compiler_swc"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Rust port of the React Compiler — SWC front end. Vendored from facebook/react by the oxc project."
 
 [dependencies]
-oxc_react_compiler_ast = { path = "../oxc_react_compiler_ast" }
-oxc_react_compiler = { path = "../oxc_react_compiler" }
-oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics" }
-oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir" }
+oxc_react_compiler_ast = { path = "../oxc_react_compiler_ast", version = "0.1.0" }
+oxc_react_compiler = { path = "../oxc_react_compiler", version = "0.1.0" }
+oxc_react_compiler_diagnostics = { path = "../oxc_react_compiler_diagnostics", version = "0.1.0" }
+oxc_react_compiler_hir = { path = "../oxc_react_compiler_hir", version = "0.1.0" }
 swc_ecma_ast = "21"
 swc_ecma_visit = "21"
 swc_common = "19"
