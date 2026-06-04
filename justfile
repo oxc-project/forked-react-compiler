@@ -4,8 +4,8 @@
 #
 # The oxc-project org ruleset forbids merge commits, so the vendor is a linear
 # snapshot (not `git subtree`): each `sync` re-extracts upstream's `compiler/`,
-# re-runs the transform tools (./codemod + ./prepare-publish), and commits once.
-# The transform is re-applied every sync because the snapshot is taken fresh.
+# re-runs the transform tool (./codemod), and commits once. The transform is
+# re-applied every sync because the snapshot is taken fresh.
 #
 #   just import   # one-time: create ./react-compiler (transformed)
 #   just sync     # update ./react-compiler to the latest PR state (re-transformed)
@@ -44,10 +44,9 @@ sync:
     fi
 
 # Transform the vendored tree for publishing (idempotent; run automatically by `sync`):
-# `codemod` oxc_-prefixes every crate; `prepare-publish` adds license/version/description.
+# `codemod` oxc_-prefixes every crate and sets up workspace deps + publishing metadata.
 prefix:
     cargo run --quiet -p codemod -- {{prefix}}
-    cargo run --quiet -p prepare-publish -- {{prefix}}
 
 # Show the upstream commit currently vendored
 status:

@@ -12,17 +12,20 @@ It is vendored as a **linear snapshot** rather than a merge-based `git subtree`,
 free of merge commits: each sync re-snapshots upstream's `compiler/` into `react-compiler/` as a
 single ordinary commit (handling additions, edits, and deletions).
 
-After each snapshot, two small Rust tools (re)transform the tree so the crates can be published to
-crates.io under the oxc namespace — re-applied automatically on every `just sync`:
+After each snapshot, a single Rust tool — [`codemod/`](./codemod) — (re)transforms the tree so the
+crates can be published to crates.io under the oxc namespace, re-applied automatically on every
+`just sync`. It:
 
-- [`codemod/`](./codemod) — prefixes every crate with **`oxc_`** (`react_compiler_oxc` →
-  `oxc_react_compiler_oxc`, etc.): directories, package names, path deps, and source.
-- [`prepare-publish/`](./prepare-publish) — uses `toml_edit` to set `license` / `version` /
-  `description` on each crate and add a `version` to internal path deps, and downloads React's MIT
-  `LICENSE`.
+- prefixes every crate with **`oxc_`** (`react_compiler_oxc` → `oxc_react_compiler_oxc`, etc.):
+  directories, package names, path deps, and source;
+- sets up workspace inheritance like the main [oxc](https://github.com/oxc-project/oxc) repo —
+  `[workspace.package]` (`version` / `edition` / `license` / `description` / `repository`) and
+  `[workspace.dependencies]` (internal crates, with versions) — so each crate uses
+  `field.workspace = true` and `dep = { workspace = true }`;
+- downloads React's MIT `LICENSE`.
 
-The publish version is a constant in [`prepare-publish/src/main.rs`](./prepare-publish/src/main.rs)
-(`VERSION`); bump it before publishing, since crates.io rejects re-publishing an existing version.
+The publish version is the `VERSION` constant in [`codemod/src/main.rs`](./codemod/src/main.rs);
+bump it before publishing, since crates.io rejects re-publishing an existing version.
 
 ## Updating
 
