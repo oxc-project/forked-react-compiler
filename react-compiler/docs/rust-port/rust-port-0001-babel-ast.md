@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create a Rust crate (`compiler/crates/oxc_react_compiler_ast`) that precisely models the Babel AST structure, enabling JSON round-tripping: parse JS with Babel in Node.js, serialize to JSON, deserialize into Rust, re-serialize back to JSON, and get an identical result.
+Create a Rust crate (`compiler/crates/forked_react_compiler_ast`) that precisely models the Babel AST structure, enabling JSON round-tripping: parse JS with Babel in Node.js, serialize to JSON, deserialize into Rust, re-serialize back to JSON, and get an identical result.
 
 This crate is the serialization boundary between the JS toolchain (Babel parser) and the Rust compiler. It must be a faithful 1:1 representation of Babel's AST output — not a simplified or custom IR.
 
@@ -14,7 +14,7 @@ This crate is the serialization boundary between the JS toolchain (Babel parser)
 
 ```
 compiler/crates/
-  oxc_react_compiler_ast/
+  forked_react_compiler_ast/
     Cargo.toml
     src/
       lib.rs              # Re-exports, top-level File/Program types
@@ -36,7 +36,7 @@ TypeScript and Flow annotation types are co-located with the module that uses th
 
 ```toml
 [package]
-name = "oxc_react_compiler_ast"
+name = "forked_react_compiler_ast"
 version = "0.1.0"
 edition = "2024"
 
@@ -359,7 +359,7 @@ Before diffing, both the original and round-tripped JSON are normalized on the R
 2. **`undefined` vs absent**: `JSON.stringify` omits `undefined` values; serde's `skip_serializing_if = "Option::is_none"` does the same.
 3. **Number precision**: Whole-number floats (e.g., `1.0`) are normalized to integers (e.g., `1`) for comparison.
 
-### Rust test: `compiler/crates/oxc_react_compiler_ast/tests/round_trip.rs`
+### Rust test: `compiler/crates/forked_react_compiler_ast/tests/round_trip.rs`
 
 The test walks all `.json` files in the fixture directory, deserializes each into `File`, re-serializes, normalizes both sides, and diffs. It reports the first 5 failures with unified diffs (capped at 50 lines per fixture) using the `similar` crate.
 

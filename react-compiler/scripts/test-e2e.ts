@@ -100,7 +100,7 @@ function discoverFixtures(rootPath: string): string[] {
 console.log('Building Rust native module and e2e CLI...');
 try {
   execSync(
-    '~/.cargo/bin/cargo build -p oxc_react_compiler_napi -p oxc_react_compiler_e2e_cli',
+    '~/.cargo/bin/cargo build -p forked_react_compiler_napi -p forked_react_compiler_e2e_cli',
     {
       cwd: path.join(REPO_ROOT, 'compiler/crates'),
       stdio: ['inherit', 'pipe', 'pipe'],
@@ -124,10 +124,10 @@ const NATIVE_DIR = path.join(
 const NATIVE_NODE_PATH = path.join(NATIVE_DIR, 'index.node');
 const TARGET_DIR = path.join(REPO_ROOT, 'compiler/target/debug');
 const dylib = fs.existsSync(
-  path.join(TARGET_DIR, 'liboxc_react_compiler_napi.dylib'),
+  path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib'),
 )
-  ? path.join(TARGET_DIR, 'liboxc_react_compiler_napi.dylib')
-  : path.join(TARGET_DIR, 'liboxc_react_compiler_napi.so');
+  ? path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib')
+  : path.join(TARGET_DIR, 'libforked_react_compiler_napi.so');
 
 if (!fs.existsSync(dylib)) {
   console.error(

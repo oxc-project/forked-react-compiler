@@ -1,12 +1,12 @@
 //! Transforms the freshly-vendored React Compiler tree so the crates can be
-//! published to crates.io under the oxc namespace. Run on every `just sync`;
-//! idempotent.
+//! published to crates.io. Run on every `just sync`; idempotent.
 //!
-//! 1. renames every crate to `oxc_*` (dirs, package names, path deps, source);
+//! 1. renames every crate to `forked_react_compiler_*` (dirs, package names, path
+//!    deps, source);
 //! 2. sets up workspace inheritance like the main oxc repo — `[workspace.package]`
 //!    (version/edition/license/description/repository) and `[workspace.dependencies]`
 //!    (internal crates, with versions) — and points each crate at them;
-//! 3. downloads React's MIT LICENSE;
+//! 3. writes React's MIT LICENSE (kept as a local copy and linked in below);
 //! 4. drops Cargo.lock (regenerated locally, git-ignored).
 //!
 //! Usage: `codemod [TREE_DIR]`   (default: `react-compiler`)
@@ -22,8 +22,7 @@ use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 const VERSION: &str = "0.1.0";
 const EDITION: &str = "2024";
 const LICENSE: &str = "MIT";
-const DESCRIPTION: &str =
-    "Rust port of the React Compiler, vendored from facebook/react by the oxc project.";
+const DESCRIPTION: &str = "Rust port of the React Compiler, vendored from facebook/react.";
 const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
 /// React's MIT LICENSE, kept as a local copy (`./LICENSE`) and linked into the
 /// tool so syncing needs no network for it.
@@ -36,9 +35,9 @@ const SKIP_DIRS: &[&str] = &["node_modules", "target", ".git"];
 
 /// A workspace member crate.
 struct Member {
-    /// Package name, e.g. `oxc_react_compiler_ast`.
+    /// Package name, e.g. `forked_react_compiler_ast`.
     name: String,
-    /// Path relative to the workspace root, e.g. `crates/oxc_react_compiler_ast`.
+    /// Path relative to the workspace root, e.g. `crates/forked_react_compiler_ast`.
     rel_path: String,
     /// Absolute path to the crate's `Cargo.toml`.
     manifest: PathBuf,
@@ -70,7 +69,7 @@ fn main() {
 
 // --- 1. renaming ------------------------------------------------------------
 
-/// Rename `crates/react_compiler*` -> `crates/oxc_react_compiler*`.
+/// Rename `crates/react_compiler*` -> `crates/forked_react_compiler*`.
 fn rename_crate_dirs(crates: &Path) -> usize {
     let mut n = 0;
     let Ok(entries) = fs::read_dir(crates) else {
@@ -79,7 +78,8 @@ fn rename_crate_dirs(crates: &Path) -> usize {
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
         if entry.path().is_dir() && name.starts_with("react_compiler") {
-            fs::rename(entry.path(), crates.join(format!("oxc_{name}"))).expect("rename crate dir");
+            fs::rename(entry.path(), crates.join(format!("forked_{name}")))
+                .expect("rename crate dir");
             n += 1;
         }
     }
@@ -116,14 +116,15 @@ fn rewrite_idents(dir: &Path) -> usize {
     count
 }
 
-/// Prefix every `react_compiler` identifier with `oxc_`, without double-prefixing
-/// an existing `oxc_react_compiler` (so it is idempotent). The npm-style hyphenated
-/// `react-compiler` is untouched. Uses NUL sentinels that never occur in text files.
+/// Rename every `react_compiler` identifier to `forked_react_compiler`, without
+/// double-prefixing an existing `forked_react_compiler` (so it is idempotent). The
+/// npm-style hyphenated `react-compiler` is untouched. Uses NUL sentinels that never
+/// occur in text files.
 fn prefix_idents(s: &str) -> String {
-    const SENTINEL: &str = "\u{0}OXC_RC\u{0}";
-    s.replace("oxc_react_compiler", SENTINEL)
-        .replace("react_compiler", "oxc_react_compiler")
-        .replace(SENTINEL, "oxc_react_compiler")
+    const SENTINEL: &str = "\u{0}FORKED_RC\u{0}";
+    s.replace("forked_react_compiler", SENTINEL)
+        .replace("react_compiler", "forked_react_compiler")
+        .replace(SENTINEL, "forked_react_compiler")
 }
 
 // --- 2. workspace inheritance (oxc style) -----------------------------------

@@ -60,8 +60,8 @@ if (!jsonMode) {
 }
 
 const cargoBuildArgs = releaseMode
-  ? '--release -p oxc_react_compiler_napi'
-  : '-p oxc_react_compiler_napi';
+  ? '--release -p forked_react_compiler_napi'
+  : '-p forked_react_compiler_napi';
 
 try {
   execSync(`~/.cargo/bin/cargo build ${cargoBuildArgs}`, {
@@ -80,10 +80,10 @@ const TARGET_DIR = path.join(
   releaseMode ? 'compiler/target/release' : 'compiler/target/debug',
 );
 const dylib = fs.existsSync(
-  path.join(TARGET_DIR, 'liboxc_react_compiler_napi.dylib'),
+  path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib'),
 )
-  ? path.join(TARGET_DIR, 'liboxc_react_compiler_napi.dylib')
-  : path.join(TARGET_DIR, 'liboxc_react_compiler_napi.so');
+  ? path.join(TARGET_DIR, 'libforked_react_compiler_napi.dylib')
+  : path.join(TARGET_DIR, 'libforked_react_compiler_napi.so');
 
 if (!fs.existsSync(dylib)) {
   console.error(`ERROR: Could not find built native module in ${TARGET_DIR}`);

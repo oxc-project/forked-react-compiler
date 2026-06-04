@@ -1,11 +1,11 @@
 use std::time::Instant;
 
 use napi_derive::napi;
-use oxc_react_compiler::entrypoint::PluginOptions;
-use oxc_react_compiler::entrypoint::compile_program;
-use oxc_react_compiler::timing::TimingEntry;
-use oxc_react_compiler_ast::File;
-use oxc_react_compiler_ast::scope::ScopeInfo;
+use forked_react_compiler::entrypoint::PluginOptions;
+use forked_react_compiler::entrypoint::compile_program;
+use forked_react_compiler::timing::TimingEntry;
+use forked_react_compiler_ast::File;
+use forked_react_compiler_ast::scope::ScopeInfo;
 use serde::Deserialize;
 
 /// Deserialize JSON with no recursion limit (for deeply nested ASTs).
@@ -79,10 +79,10 @@ fn compile_inner(
 
         // Insert NAPI timing entries
         match &mut result {
-            oxc_react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
+            forked_react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
                 timing.insert(0, napi_deser_entry);
             }
-            oxc_react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
+            forked_react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
                 timing.insert(0, napi_deser_entry);
             }
         }
@@ -93,10 +93,10 @@ fn compile_inner(
             duration_us: compile_duration.as_micros() as u64,
         };
         match &mut result {
-            oxc_react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
+            forked_react_compiler::entrypoint::CompileResult::Success { timing, .. } => {
                 timing.push(compile_entry);
             }
-            oxc_react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
+            forked_react_compiler::entrypoint::CompileResult::Error { timing, .. } => {
                 timing.push(compile_entry);
             }
         }

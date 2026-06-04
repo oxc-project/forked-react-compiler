@@ -27,14 +27,14 @@ You will receive:
 
 ### Phase 2: New Types
 - Add any new types needed by this pass
-- Place them in the appropriate crate (usually the target crate or `oxc_react_compiler_hir`)
+- Place them in the appropriate crate (usually the target crate or `forked_react_compiler_hir`)
 - IMPORTANT: Follow the data modeling guidelines in docs/rust-port/rust-port-architecture.md for arena types (non-exhaustive types to pay extra attention to: `Identifier`, `HirFunction`, `ReactiveScope`, `Environment` etc)
 
 ### Phase 3: Crate Setup (if new crate needed)
 - Create `Cargo.toml` with appropriate dependencies
 - Create `src/lib.rs` with module declarations
 - Add the crate to the workspace `Cargo.toml`
-- Add the crate as a dependency of `oxc_react_compiler`
+- Add the crate as a dependency of `forked_react_compiler`
 
 ### Phase 4: Port the Pass
 - Create the Rust file(s) corresponding to the TypeScript source
@@ -51,7 +51,7 @@ Key conventions:
 - **Structural similarity**: Target ~85-95% correspondence with TypeScript. A developer should be able to view TS and Rust side-by-side
 
 ### Phase 5: Wire Pipeline
-- Add the pass call to `compiler/crates/oxc_react_compiler/src/entrypoint/pipeline.rs`
+- Add the pass call to `compiler/crates/forked_react_compiler/src/entrypoint/pipeline.rs`
 - Follow the existing pattern: call the pass function, then log with `debug_print` and `context.log_debug`
 - Match the exact ordering from Pipeline.ts
 - Add necessary `use` imports

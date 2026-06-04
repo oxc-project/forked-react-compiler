@@ -4,7 +4,7 @@
 
 Define a normalized, parser-agnostic scope information model (`ScopeInfo`) that captures binding resolution, scope chains, and import metadata needed by the compiler's HIR lowering phase. The scope data is stored separately from the AST and linked via position-based lookup maps.
 
-**Current status**: Complete (human reviewed). Scope types defined in `oxc_react_compiler_ast::scope`. Babel serialization in `babel-ast-to-json.mjs`. Scope resolution test passes for all 1714 fixtures.
+**Current status**: Complete (human reviewed). Scope types defined in `forked_react_compiler_ast::scope`. Babel serialization in `babel-ast-to-json.mjs`. Scope resolution test passes for all 1714 fixtures.
 
 ---
 
@@ -230,7 +230,7 @@ All items below have been implemented and verified against all 1714 test fixture
 
 ### Scope info types — Done
 
-Defined `ScopeInfo`, `ScopeData`, `BindingData`, and related types as Rust structs in `oxc_react_compiler_ast::scope`. Includes `ScopeId`, `BindingId` newtypes, `ScopeKind`, `BindingKind`, `ImportBindingData`, and the resolution methods on `ScopeInfo`.
+Defined `ScopeInfo`, `ScopeData`, `BindingData`, and related types as Rust structs in `forked_react_compiler_ast::scope`. Includes `ScopeId`, `BindingId` newtypes, `ScopeKind`, `BindingKind`, `ImportBindingData`, and the resolution methods on `ScopeInfo`.
 
 ### Babel scope serialization — Done
 
@@ -238,7 +238,7 @@ Extended `compiler/scripts/babel-ast-to-json.mjs` to produce `.scope.json` and `
 
 ### Scope resolution test — Done
 
-Implemented in `compiler/crates/oxc_react_compiler_ast/tests/scope_resolution.rs` with two tests:
+Implemented in `compiler/crates/forked_react_compiler_ast/tests/scope_resolution.rs` with two tests:
 1. **`scope_info_round_trip`**: Verifies ScopeInfo JSON deserializes, re-serializes correctly, and passes internal consistency checks.
 2. **`scope_resolution_rename`**: Walks the AST JSON using ScopeInfo to rename identifiers, then compares against Babel's renamed output. Verifies that the ScopeInfo structure correctly reproduces Babel's binding resolution for all 1714 fixtures.
 
