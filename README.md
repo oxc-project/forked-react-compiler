@@ -22,7 +22,8 @@ crates can be published to crates.io under the oxc namespace, re-applied automat
   `[workspace.package]` (`version` / `edition` / `license` / `description` / `repository`) and
   `[workspace.dependencies]` (internal crates, with versions) — so each crate uses
   `field.workspace = true` and `dep = { workspace = true }`;
-- downloads React's MIT `LICENSE`.
+- writes React's MIT `LICENSE` (kept as a local copy at [`./LICENSE`](./LICENSE) and embedded into
+  the tool via `include_str!`, so syncing needs no network for it).
 
 The publish version is the `VERSION` constant in [`codemod/src/main.rs`](./codemod/src/main.rs);
 bump it before publishing, since crates.io rejects re-publishing an existing version.

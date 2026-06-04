@@ -14,7 +14,6 @@
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 
@@ -26,8 +25,9 @@ const LICENSE: &str = "MIT";
 const DESCRIPTION: &str =
     "Rust port of the React Compiler, vendored from facebook/react by the oxc project.";
 const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
-/// React's LICENSE (MIT). Downloaded fresh on every run.
-const LICENSE_URL: &str = "https://raw.githubusercontent.com/facebook/react/main/LICENSE";
+/// React's MIT LICENSE, kept as a local copy (`./LICENSE`) and linked into the
+/// tool so syncing needs no network for it.
+const LICENSE_TEXT: &str = include_str!("../../LICENSE");
 
 /// File extensions whose contents may reference crate identifiers.
 const EXTS: &[&str] = &["rs", "toml", "md", "ts", "tsx", "js", "mjs", "cjs", "sh"];
@@ -57,23 +57,13 @@ fn main() {
     let members = members(&root);
     set_up_workspace(&root, &members);
 
-    let wrote_license = match download(LICENSE_URL) {
-        Ok(text) => {
-            fs::write(root.join("LICENSE"), text).expect("write LICENSE");
-            true
-        }
-        Err(e) => {
-            eprintln!("codemod: warning: LICENSE download failed ({e}); keeping existing file");
-            false
-        }
-    };
+    fs::write(root.join("LICENSE"), LICENSE_TEXT).expect("write LICENSE");
 
     let dropped_lock = fs::remove_file(root.join("Cargo.lock")).is_ok();
 
     println!(
-        "codemod: renamed {renamed} dir(s), rewrote {rewritten} file(s), prepared {} crate(s){}{}",
+        "codemod: renamed {renamed} dir(s), rewrote {rewritten} file(s), prepared {} crate(s), wrote LICENSE{}",
         members.len(),
-        if wrote_license { ", wrote LICENSE" } else { "" },
         if dropped_lock { ", dropped Cargo.lock" } else { "" },
     );
 }
@@ -284,20 +274,4 @@ fn read_doc(path: &Path) -> DocumentMut {
         .unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
         .parse()
         .unwrap_or_else(|e| panic!("parse {}: {e}", path.display()))
-}
-
-/// Download a URL as text via `curl` (keeps this tool dependency-light).
-fn download(url: &str) -> Result<String, String> {
-    let out = Command::new("curl")
-        .args(["--fail", "--silent", "--show-error", "--location", url])
-        .output()
-        .map_err(|e| format!("failed to spawn curl: {e}"))?;
-    if !out.status.success() {
-        return Err(format!(
-            "curl exited with {}: {}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr).trim()
-        ));
-    }
-    String::from_utf8(out.stdout).map_err(|e| format!("response was not UTF-8: {e}"))
 }
