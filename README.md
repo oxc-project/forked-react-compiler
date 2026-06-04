@@ -38,7 +38,7 @@ bump it before publishing, since crates.io rejects re-publishing an existing ver
 ```sh
 just import   # one-time: create react-compiler/ (already done)
 just sync     # pull the latest state of PR #36173, re-transform, and commit
-just prefix   # (re)run codemod on react-compiler/ in place
+just codemod  # (re)run codemod on react-compiler/ in place
 just status   # show which upstream commit is currently vendored
 ```
 
