@@ -1,16 +1,48 @@
-//! Rewrites the vendored React Compiler tree so every crate is prefixed with
-//! `oxc_` (e.g. `react_compiler_oxc` -> `oxc_react_compiler_oxc`). Idempotent:
-//! safe to run repeatedly, including on an already-prefixed tree.
+//! Transforms the freshly-vendored React Compiler tree so the crates can be
+//! published to crates.io under the oxc namespace. Run on every `just sync`;
+//! idempotent.
+//!
+//! 1. renames every crate to `oxc_*` (dirs, package names, path deps, source);
+//! 2. sets up workspace inheritance like the main oxc repo — `[workspace.package]`
+//!    (version/edition/license/description/repository) and `[workspace.dependencies]`
+//!    (internal crates, with versions) — and points each crate at them;
+//! 3. downloads React's MIT LICENSE;
+//! 4. drops Cargo.lock (regenerated locally, git-ignored).
 //!
 //! Usage: `codemod [TREE_DIR]`   (default: `react-compiler`)
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+
+use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
+
+/// Published version for every crate. Bump before each publish — crates.io
+/// rejects re-publishing an already-published version.
+const VERSION: &str = "0.1.0";
+const EDITION: &str = "2024";
+const LICENSE: &str = "MIT";
+const DESCRIPTION: &str =
+    "Rust port of the React Compiler, vendored from facebook/react by the oxc project.";
+const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
+/// React's LICENSE (MIT). Downloaded fresh on every run.
+const LICENSE_URL: &str = "https://raw.githubusercontent.com/facebook/react/main/LICENSE";
 
 /// File extensions whose contents may reference crate identifiers.
 const EXTS: &[&str] = &["rs", "toml", "md", "ts", "tsx", "js", "mjs", "cjs", "sh"];
 /// Directories to skip while walking the tree.
 const SKIP_DIRS: &[&str] = &["node_modules", "target", ".git"];
+
+/// A workspace member crate.
+struct Member {
+    /// Package name, e.g. `oxc_react_compiler_ast`.
+    name: String,
+    /// Path relative to the workspace root, e.g. `crates/oxc_react_compiler_ast`.
+    rel_path: String,
+    /// Absolute path to the crate's `Cargo.toml`.
+    manifest: PathBuf,
+}
 
 fn main() {
     let root = PathBuf::from(
@@ -20,14 +52,33 @@ fn main() {
     );
 
     let renamed = rename_crate_dirs(&root.join("crates"));
-    let files = rewrite_idents(&root);
+    let rewritten = rewrite_idents(&root);
+
+    let members = members(&root);
+    set_up_workspace(&root, &members);
+
+    let wrote_license = match download(LICENSE_URL) {
+        Ok(text) => {
+            fs::write(root.join("LICENSE"), text).expect("write LICENSE");
+            true
+        }
+        Err(e) => {
+            eprintln!("codemod: warning: LICENSE download failed ({e}); keeping existing file");
+            false
+        }
+    };
+
     let dropped_lock = fs::remove_file(root.join("Cargo.lock")).is_ok();
 
     println!(
-        "codemod: renamed {renamed} crate dir(s), rewrote {files} file(s){}",
-        if dropped_lock { ", dropped Cargo.lock" } else { "" }
+        "codemod: renamed {renamed} dir(s), rewrote {rewritten} file(s), prepared {} crate(s){}{}",
+        members.len(),
+        if wrote_license { ", wrote LICENSE" } else { "" },
+        if dropped_lock { ", dropped Cargo.lock" } else { "" },
     );
 }
+
+// --- 1. renaming ------------------------------------------------------------
 
 /// Rename `crates/react_compiler*` -> `crates/oxc_react_compiler*`.
 fn rename_crate_dirs(crates: &Path) -> usize {
@@ -83,4 +134,170 @@ fn prefix_idents(s: &str) -> String {
     s.replace("oxc_react_compiler", SENTINEL)
         .replace("react_compiler", "oxc_react_compiler")
         .replace(SENTINEL, "oxc_react_compiler")
+}
+
+// --- 2. workspace inheritance (oxc style) -----------------------------------
+
+fn set_up_workspace(root: &Path, members: &[Member]) {
+    edit_root_manifest(root, members);
+    let internal: BTreeSet<&str> = members.iter().map(|m| m.name.as_str()).collect();
+    for member in members {
+        edit_member_manifest(&member.manifest, &internal);
+    }
+}
+
+/// Resolve workspace `members` (expanding a trailing `/*`) to `Member`s, sorted by name.
+fn members(root: &Path) -> Vec<Member> {
+    let doc = read_doc(&root.join("Cargo.toml"));
+    let entries = doc
+        .get("workspace")
+        .and_then(|w| w.get("members"))
+        .and_then(Item::as_array);
+
+    let mut out = Vec::new();
+    let Some(entries) = entries else {
+        return out;
+    };
+    for member in entries.iter().filter_map(|m| m.as_str()) {
+        let rel_paths = match member.strip_suffix("/*") {
+            Some(parent) => match fs::read_dir(root.join(parent)) {
+                Ok(rd) => rd
+                    .flatten()
+                    .filter(|e| e.path().is_dir())
+                    .map(|e| format!("{parent}/{}", e.file_name().to_string_lossy()))
+                    .collect(),
+                Err(_) => Vec::new(),
+            },
+            None => vec![member.to_string()],
+        };
+        for rel_path in rel_paths {
+            let manifest = root.join(&rel_path).join("Cargo.toml");
+            if let Some(name) = package_name(&manifest) {
+                out.push(Member { name, rel_path, manifest });
+            }
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+fn package_name(manifest: &Path) -> Option<String> {
+    let doc: DocumentMut = fs::read_to_string(manifest).ok()?.parse().ok()?;
+    Some(doc.get("package")?.get("name")?.as_str()?.to_string())
+}
+
+/// Add `[workspace.package]` and `[workspace.dependencies]` to the root manifest.
+fn edit_root_manifest(root: &Path, members: &[Member]) {
+    let path = root.join("Cargo.toml");
+    let mut doc = read_doc(&path);
+
+    let mut package = Table::new();
+    package.insert("version", value(VERSION));
+    package.insert("edition", value(EDITION));
+    package.insert("license", value(LICENSE));
+    package.insert("description", value(DESCRIPTION));
+    package.insert("repository", value(REPOSITORY));
+
+    let mut dependencies = Table::new();
+    for member in members {
+        let mut dep = InlineTable::new();
+        dep.insert("version", Value::from(VERSION));
+        dep.insert("path", Value::from(member.rel_path.as_str()));
+        dep.fmt();
+        dependencies.insert(&member.name, value(dep));
+    }
+
+    let workspace = doc["workspace"]
+        .as_table_mut()
+        .expect("[workspace] table");
+    workspace.insert("package", Item::Table(package));
+    workspace.insert("dependencies", Item::Table(dependencies));
+
+    fs::write(&path, doc.to_string()).expect("write workspace Cargo.toml");
+}
+
+/// Inherit publishing fields from the workspace and use `{ workspace = true }`
+/// for internal dependencies.
+fn edit_member_manifest(path: &Path, internal: &BTreeSet<&str>) {
+    let mut doc = read_doc(path);
+
+    if let Some(pkg) = doc.get_mut("package").and_then(Item::as_table_mut) {
+        for field in ["version", "edition", "license", "description", "repository"] {
+            pkg.insert(field, workspace_inherited());
+        }
+    }
+
+    for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+        let keys: Vec<String> = match doc.get(section).and_then(Item::as_table) {
+            Some(table) => table
+                .iter()
+                .map(|(k, _)| k.to_string())
+                .filter(|k| internal.contains(k.as_str()))
+                .collect(),
+            None => continue,
+        };
+        for key in keys {
+            let dep = workspace_dep(&doc[section][key.as_str()]);
+            if let Some(table) = doc[section].as_table_mut() {
+                table.insert(&key, dep);
+            }
+        }
+    }
+
+    fs::write(path, doc.to_string()).expect("write manifest");
+}
+
+/// A dotted `field.workspace = true` item.
+fn workspace_inherited() -> Item {
+    let mut table = Table::new();
+    table.set_dotted(true);
+    table.insert("workspace", value(true));
+    Item::Table(table)
+}
+
+/// `{ workspace = true }`, preserving `features` / `optional` / `default-features`.
+fn workspace_dep(old: &Item) -> Item {
+    let mut dep = InlineTable::new();
+    dep.insert("workspace", Value::from(true));
+    for key in ["features", "optional", "default-features"] {
+        let existing = old
+            .as_inline_table()
+            .and_then(|t| t.get(key).cloned())
+            .or_else(|| {
+                old.as_table()
+                    .and_then(|t| t.get(key))
+                    .and_then(Item::as_value)
+                    .cloned()
+            });
+        if let Some(v) = existing {
+            dep.insert(key, v);
+        }
+    }
+    dep.fmt();
+    value(dep)
+}
+
+// --- helpers ----------------------------------------------------------------
+
+fn read_doc(path: &Path) -> DocumentMut {
+    fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+        .parse()
+        .unwrap_or_else(|e| panic!("parse {}: {e}", path.display()))
+}
+
+/// Download a URL as text via `curl` (keeps this tool dependency-light).
+fn download(url: &str) -> Result<String, String> {
+    let out = Command::new("curl")
+        .args(["--fail", "--silent", "--show-error", "--location", url])
+        .output()
+        .map_err(|e| format!("failed to spawn curl: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "curl exited with {}: {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    String::from_utf8(out.stdout).map_err(|e| format!("response was not UTF-8: {e}"))
 }

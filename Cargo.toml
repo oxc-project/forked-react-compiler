@@ -2,5 +2,5 @@
 # The vendored `react-compiler/` is its own (excluded) workspace.
 [workspace]
 resolver = "2"
-members = ["codemod", "prepare-publish"]
+members = ["codemod"]
 exclude = ["react-compiler"]

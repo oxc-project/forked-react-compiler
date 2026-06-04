@@ -7,3 +7,6 @@ publish = false
 [[bin]]
 name = "codemod"
 path = "src/main.rs"
+
+[dependencies]
+toml_edit = "0.22"
