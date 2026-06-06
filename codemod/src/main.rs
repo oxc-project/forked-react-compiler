@@ -10,6 +10,7 @@
 //!   - `[lib] name`      -> `react_compiler_X`         (kept, so `use react_compiler_X` still works)
 //!   - inherits version/edition/license/description/repository from `[workspace.package]`
 //!   - internal deps become `{ workspace = true }`
+//!   - any `regex` dep is swapped to a `regex-lite` package rename (import name kept)
 //!   - `publish` = true for `react_compiler` and its (transitive) deps; false for the rest
 //! Root `[workspace.dependencies]` maps each import name to its published package:
 //!   `react_compiler_X = { package = "forked_react_compiler_X", version, path }`
@@ -32,6 +33,8 @@ const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
 /// React's MIT LICENSE, kept as a local copy (`./LICENSE`) and linked into the
 /// tool so syncing needs no network for it.
 const LICENSE_TEXT: &str = include_str!("../../LICENSE");
+/// git-cliff config that `cargo release-oxc` loads from the workspace root.
+const CLIFF_CONFIG: &str = include_str!("../cliff.toml");
 /// `cargo release-oxc` (https://github.com/oxc-project/cargo-release-oxc) config.
 /// Written into the vendored workspace so `cargo release-oxc publish` can run there.
 /// `root_crate` is the published name of `react-compiler/crates/react_compiler`.
@@ -76,10 +79,11 @@ fn main() {
 
     fs::write(root.join("LICENSE"), LICENSE_TEXT).expect("write LICENSE");
     fs::write(root.join("oxc_release.toml"), RELEASE_CONFIG).expect("write oxc_release.toml");
+    fs::write(root.join("cliff.toml"), CLIFF_CONFIG).expect("write cliff.toml");
     let dropped_lock = fs::remove_file(root.join("Cargo.lock")).is_ok();
 
     println!(
-        "codemod: published name -> forked_react_compiler_* on {} crate(s), wrote LICENSE + oxc_release.toml{}",
+        "codemod: published name -> forked_react_compiler_* on {} crate(s), wrote LICENSE + oxc_release.toml + cliff.toml{}",
         members.len(),
         if dropped_lock { ", dropped Cargo.lock" } else { "" },
     );
@@ -236,7 +240,28 @@ fn edit_member_manifest(member: &Member, internal: &BTreeSet<&str>, publish: boo
         }
     }
 
+    swap_regex_lite(&mut doc);
+
     fs::write(&member.manifest, doc.to_string()).expect("write manifest");
+}
+
+/// Replace the `regex` dependency with a `regex-lite` package rename, keeping the
+/// import name `regex` so upstream's `use regex::Regex;` needs no change. The
+/// compiler only uses a simple anchored pattern (`captures`/`get`), all of which
+/// `regex-lite` supports — and it pulls in far less than full `regex`. Idempotent.
+fn swap_regex_lite(doc: &mut DocumentMut) {
+    for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+        let Some(table) = doc.get_mut(section).and_then(Item::as_table_mut) else {
+            continue;
+        };
+        if !table.contains_key("regex") {
+            continue;
+        }
+        let mut dep = InlineTable::new();
+        dep.insert("package", Value::from("regex-lite"));
+        dep.insert("version", Value::from("0.1"));
+        table.insert("regex", value(dep));
+    }
 }
 
 /// A dotted `field.workspace = true` item.
