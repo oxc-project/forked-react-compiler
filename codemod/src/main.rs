@@ -25,7 +25,7 @@ use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 
 /// Published version for every crate. Bump before each publish — crates.io
 /// rejects re-publishing an already-published version.
-const VERSION: &str = "0.1.0";
+const VERSION: &str = "0.1.1";
 const EDITION: &str = "2024";
 const LICENSE: &str = "MIT";
 const DESCRIPTION: &str = "Rust port of the React Compiler, vendored from facebook/react.";
@@ -33,6 +33,8 @@ const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
 /// React's MIT LICENSE, kept as a local copy (`./LICENSE`) and linked into the
 /// tool so syncing needs no network for it.
 const LICENSE_TEXT: &str = include_str!("../../LICENSE");
+/// git-cliff config that `cargo release-oxc` loads from the workspace root.
+const CLIFF_CONFIG: &str = include_str!("../cliff.toml");
 /// `cargo release-oxc` (https://github.com/oxc-project/cargo-release-oxc) config.
 /// Written into the vendored workspace so `cargo release-oxc publish` can run there.
 /// `root_crate` is the published name of `react-compiler/crates/react_compiler`.
@@ -77,10 +79,11 @@ fn main() {
 
     fs::write(root.join("LICENSE"), LICENSE_TEXT).expect("write LICENSE");
     fs::write(root.join("oxc_release.toml"), RELEASE_CONFIG).expect("write oxc_release.toml");
+    fs::write(root.join("cliff.toml"), CLIFF_CONFIG).expect("write cliff.toml");
     let dropped_lock = fs::remove_file(root.join("Cargo.lock")).is_ok();
 
     println!(
-        "codemod: published name -> forked_react_compiler_* on {} crate(s), wrote LICENSE + oxc_release.toml{}",
+        "codemod: published name -> forked_react_compiler_* on {} crate(s), wrote LICENSE + oxc_release.toml + cliff.toml{}",
         members.len(),
         if dropped_lock { ", dropped Cargo.lock" } else { "" },
     );

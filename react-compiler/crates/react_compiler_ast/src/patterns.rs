@@ -20,6 +20,7 @@ pub enum PatternLike {
     TSSatisfiesExpression(crate::expressions::TSSatisfiesExpression),
     TSNonNullExpression(crate::expressions::TSNonNullExpression),
     TSTypeAssertion(crate::expressions::TSTypeAssertion),
+    TypeCastExpression(crate::expressions::TypeCastExpression),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

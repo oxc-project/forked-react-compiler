@@ -434,6 +434,7 @@ fn build_function_expression(node: CompiledFunctionNode) -> Expression {
                 is_async: func_decl.is_async,
                 return_type: func_decl.return_type,
                 type_parameters: func_decl.type_parameters,
+                predicate: func_decl.predicate,
             })
         }
     }
