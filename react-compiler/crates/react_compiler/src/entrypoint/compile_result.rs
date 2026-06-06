@@ -80,11 +80,13 @@ pub struct BindingRenameInfo {
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum CompileResult {
     /// Compilation succeeded (or no functions needed compilation).
-    /// `ast` is None if no changes were made to the program.
-    /// The AST is stored as a pre-serialized JSON string (RawValue) to avoid
-    /// double-serialization: File→Value→String becomes File→String directly.
+    /// `ast` is None if no changes were made to the program. The compiled Babel
+    /// AST is returned by value so in-process Rust consumers (the oxc/swc
+    /// front-ends) use it directly instead of round-tripping through JSON.
+    /// `CompileResult` still derives `Serialize`, so a JS consumer can serialize
+    /// the whole result as before.
     Success {
-        ast: Option<Box<serde_json::value::RawValue>>,
+        ast: Option<react_compiler_ast::File>,
         events: Vec<LoggerEvent>,
         /// Unified ordered log interleaving events and debug entries.
         /// Items appear in the order they were emitted during compilation.

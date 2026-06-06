@@ -6,12 +6,13 @@
 #
 # The oxc-project org ruleset forbids merge commits, so the vendor is a linear
 # snapshot (not `git subtree`): each `sync` re-extracts upstream's `compiler/`,
-# re-runs the transform tool (./codemod), and commits once. The transform is
-# re-applied every sync because the snapshot is taken fresh.
+# re-runs the transform tool (./codemod), re-applies ./patches, and commits once.
+# Both are re-applied every sync because the snapshot is taken fresh.
 #
 #   just import       # one-time: create ./react-compiler (transformed)
 #   just sync         # update ./react-compiler to the latest PR state (re-transformed)
 #   just codemod      # (re)run codemod on ./react-compiler in place
+#   just patch        # apply ./patches/*.patch (Rust source changes the codemod can't express)
 #   just check        # cargo check the vendored workspace
 #   just publish-dry  # dry-run publishing the whole set (cargo publish --workspace --dry-run)
 #   just publish      # publish forked_react_compiler + its deps via cargo-release-oxc
@@ -40,6 +41,7 @@ sync:
     rm -rf {{prefix}}
     git read-tree --prefix={{prefix}}/ -u "$tree"
     just codemod
+    just patch
     git add -A {{prefix}}
     if git diff --cached --quiet -- {{prefix}}; then
         echo "{{prefix}} already at react {{pr_ref}} @ ${upstream} — nothing to commit."
@@ -51,6 +53,20 @@ sync:
 # (Re)run codemod on ./{{prefix}}: published names, workspace deps, publish flags, LICENSE, oxc_release.toml
 codemod:
     cargo run --quiet -p codemod -- {{prefix}}
+
+# Apply local source patches in ./patches over the freshly-synced upstream tree.
+# These are changes the codemod can't express (Rust source, not Cargo.toml) — e.g.
+# having `compile_program` return the compiled AST by value instead of a JSON
+# string, so the oxc/swc front-ends skip a serialize→deserialize round-trip.
+# `git apply` fails loudly if upstream drifts, so a stale patch surfaces at sync.
+patch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shopt -s nullglob
+    for p in patches/*.patch; do
+        echo "Applying $p"
+        git apply "$p"
+    done
 
 # Type-check the vendored workspace
 check:

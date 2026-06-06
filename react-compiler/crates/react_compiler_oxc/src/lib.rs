@@ -77,13 +77,9 @@ pub fn transform(
     // This maps source positions to new identifier names for uncompiled code.
     let rename_plan = build_rename_plan(&scope_info, &renames);
 
-    let compiled_file = program_ast.and_then(|raw_json| {
-        // First parse to serde_json::Value which deduplicates "type" fields
-        // (the compiler output can produce duplicate "type" keys due to
-        // BaseNode.node_type + #[serde(tag = "type")] enum tagging)
-        let value: serde_json::Value = serde_json::from_str(raw_json.get()).ok()?;
-        serde_json::from_value(value).ok()
-    });
+    // `compile_program` returns the Babel AST by value — use it directly, no
+    // JSON round-trip.
+    let compiled_file = program_ast;
 
     TransformResult {
         file: compiled_file,
