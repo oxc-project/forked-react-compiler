@@ -25,7 +25,8 @@ export RUST_MIN_STACK=33554432
 
 echo "Running round-trip test..."
 cd "$REPO_ROOT/compiler/crates"
-FIXTURE_JSON_DIR="$TMPDIR" ~/.cargo/bin/cargo test -p react_compiler_ast --test round_trip -- --nocapture
+CARGO="${CARGO:-cargo}"
+FIXTURE_JSON_DIR="$TMPDIR" "$CARGO" test -p react_compiler_ast --test round_trip -- --nocapture
 
 echo "Running scope resolution test..."
-FIXTURE_JSON_DIR="$TMPDIR" ~/.cargo/bin/cargo test -p react_compiler_ast --test scope_resolution -- --nocapture
+FIXTURE_JSON_DIR="$TMPDIR" "$CARGO" test -p react_compiler_ast --test scope_resolution -- --nocapture

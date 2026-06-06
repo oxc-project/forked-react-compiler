@@ -2628,6 +2628,7 @@ fn codegen_function_expression(
             is_async: fn_result.is_async,
             return_type: None,
             type_parameters: None,
+            predicate: None,
         }),
     };
 
@@ -2745,6 +2746,7 @@ fn codegen_object_expression(
                                 decorators: None,
                                 return_type: None,
                                 type_parameters: None,
+                                predicate: None,
                             },
                         ));
                     }
@@ -4020,6 +4022,7 @@ fn wrap_hook_call_with_guard(
         is_async: false,
         return_type: None,
         type_parameters: None,
+        predicate: None,
     });
 
     Expression::CallExpression(ast_expr::CallExpression {

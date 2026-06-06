@@ -1577,6 +1577,9 @@ impl ReverseCtx {
             PatternLike::TSTypeAssertion(e) => {
                 Pat::Expr(Box::new(self.convert_expression(&e.expression)))
             }
+            PatternLike::TypeCastExpression(e) => {
+                Pat::Expr(Box::new(self.convert_expression(&e.expression)))
+            }
         }
     }
 
@@ -1624,7 +1627,8 @@ impl ReverseCtx {
             PatternLike::TSAsExpression(_)
             | PatternLike::TSSatisfiesExpression(_)
             | PatternLike::TSNonNullExpression(_)
-            | PatternLike::TSTypeAssertion(_) => AssignTarget::Simple(SimpleAssignTarget::Ident(
+            | PatternLike::TSTypeAssertion(_)
+            | PatternLike::TypeCastExpression(_) => AssignTarget::Simple(SimpleAssignTarget::Ident(
                 self.binding_ident("__unknown__", DUMMY_SP),
             )),
         }
