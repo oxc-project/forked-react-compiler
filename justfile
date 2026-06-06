@@ -37,10 +37,15 @@ sync:
     git fetch --depth=1 --no-tags {{react_repo}} {{pr_ref}}
     upstream="$(git rev-parse FETCH_HEAD)"
     tree="$(git rev-parse "FETCH_HEAD:{{src_dir}}")"
+    # Preserve the currently-published version across the wipe so cargo-release-oxc
+    # stays the single source of truth — the codemod re-stamps whatever is committed
+    # rather than inventing a number.
+    version="$(sed -n 's/^version = "\(.*\)"/\1/p' {{prefix}}/Cargo.toml | head -1)"
+    version="${version:-0.1.0}"
     git rm -r --cached --quiet --ignore-unmatch {{prefix}}
     rm -rf {{prefix}}
     git read-tree --prefix={{prefix}}/ -u "$tree"
-    just codemod
+    just codemod "$version"
     just patch
     git add -A {{prefix}}
     if git diff --cached --quiet -- {{prefix}}; then
@@ -50,9 +55,10 @@ sync:
         echo "Committed {{prefix}} @ ${upstream}."
     fi
 
-# (Re)run codemod on ./{{prefix}}: published names, workspace deps, publish flags, LICENSE, oxc_release.toml
-codemod:
-    cargo run --quiet -p codemod -- {{prefix}}
+# (Re)run codemod on ./{{prefix}}: published names, workspace deps, publish flags, LICENSE, oxc_release.toml.
+# `version` defaults to the version already in the tree (cargo-release-oxc owns the bumps).
+codemod version=`sed -n 's/^version = "\(.*\)"/\1/p' react-compiler/Cargo.toml 2>/dev/null | head -1`:
+    cargo run --quiet -p codemod -- {{prefix}} {{version}}
 
 # Apply local source patches in ./patches over the freshly-synced upstream tree.
 # These are changes the codemod can't express (Rust source, not Cargo.toml) — e.g.
