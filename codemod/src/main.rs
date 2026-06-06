@@ -23,9 +23,9 @@ use std::path::{Path, PathBuf};
 
 use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 
-/// Published version for every crate. Bump before each publish — crates.io
-/// rejects re-publishing an already-published version.
-const VERSION: &str = "0.1.1";
+// The published version is passed in as the 2nd CLI arg (see `main`) rather than
+// hardcoded here, so `cargo-release-oxc` stays the single source of truth and a
+// resync never reverts a released version.
 const EDITION: &str = "2024";
 const LICENSE: &str = "MIT";
 const DESCRIPTION: &str = "Rust port of the React Compiler, vendored from facebook/react.";
@@ -69,10 +69,15 @@ fn main() {
             .unwrap_or_else(|| "react-compiler".to_string()),
     );
 
+    // Version to stamp on `[workspace.package]` and every inter-crate dep. Passed
+    // by `just sync`/`just codemod`, which read it from the current `Cargo.toml`
+    // so `cargo-release-oxc` remains the only thing that bumps it.
+    let version = std::env::args().nth(2).unwrap_or_else(|| "0.1.0".to_string());
+
     let members = members(&root);
     let internal: BTreeSet<&str> = members.iter().map(|m| m.import_name.as_str()).collect();
     let publish = publish_closure(&members, &internal);
-    edit_root_manifest(&root, &members);
+    edit_root_manifest(&root, &members, &version);
     for member in &members {
         edit_member_manifest(member, &internal, publish.contains(&member.import_name));
     }
@@ -135,12 +140,12 @@ fn package_name(manifest: &Path) -> Option<String> {
 
 /// Add `[workspace.package]` and `[workspace.dependencies]` (mapping each import name
 /// to its published package) to the root manifest.
-fn edit_root_manifest(root: &Path, members: &[Member]) {
+fn edit_root_manifest(root: &Path, members: &[Member], version: &str) {
     let path = root.join("Cargo.toml");
     let mut doc = read_doc(&path);
 
     let mut package = Table::new();
-    package.insert("version", value(VERSION));
+    package.insert("version", value(version));
     package.insert("edition", value(EDITION));
     package.insert("license", value(LICENSE));
     package.insert("description", value(DESCRIPTION));
@@ -150,7 +155,7 @@ fn edit_root_manifest(root: &Path, members: &[Member]) {
     for member in members {
         let mut dep = InlineTable::new();
         dep.insert("package", Value::from(member.package_name.as_str()));
-        dep.insert("version", Value::from(VERSION));
+        dep.insert("version", Value::from(version));
         dep.insert("path", Value::from(member.rel_path.as_str()));
         dep.fmt();
         dependencies.insert(&member.import_name, value(dep));
