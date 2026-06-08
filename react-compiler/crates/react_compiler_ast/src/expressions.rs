@@ -229,7 +229,8 @@ pub struct ArrowFunctionExpression {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        rename = "predicate"
+        rename = "predicate",
+        deserialize_with = "crate::common::nullable_value"
     )]
     pub predicate: Option<Box<serde_json::Value>>,
 }
@@ -269,7 +270,8 @@ pub struct FunctionExpression {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        rename = "predicate"
+        rename = "predicate",
+        deserialize_with = "crate::common::nullable_value"
     )]
     pub predicate: Option<Box<serde_json::Value>>,
 }
@@ -336,7 +338,8 @@ pub struct ObjectMethod {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        rename = "predicate"
+        rename = "predicate",
+        deserialize_with = "crate::common::nullable_value"
     )]
     pub predicate: Option<Box<serde_json::Value>>,
 }

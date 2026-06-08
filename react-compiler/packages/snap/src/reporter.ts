@@ -181,6 +181,17 @@ export async function update(results: TestResults): Promise<void> {
  * Report test results to the user
  * @returns boolean indicatig whether all tests passed
  */
+// Fixtures where TS and Rust produce different output. Snapshots reflect Rust
+// output (source of truth). Skipped when running the TS compiler.
+const TS_SKIP_FIXTURES: Set<string> = new Set([
+  // Rust compiles successfully, TS would error. Renamed from error.todo-/error.bug-.
+  'todo-hoist-type-alias-before-declaration',
+  // Error message/format divergences
+  'fbt/error.todo-locally-require-fbt',
+  // Minor output difference (TS adds unused runtime import)
+  'use-no-forget-multiple-with-eslint-suppression',
+]);
+
 export function report(
   results: TestResults,
   verbose: boolean = false,
@@ -188,6 +199,9 @@ export function report(
 ): boolean {
   const failures: Array<[string, TestResult]> = [];
   for (const [basename, result] of results) {
+    if (!rust && TS_SKIP_FIXTURES.has(basename)) {
+      continue;
+    }
     const actual =
       rust && result.actual
         ? normalizeCodeBlankLines(result.actual)

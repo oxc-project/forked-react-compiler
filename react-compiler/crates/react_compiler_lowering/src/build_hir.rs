@@ -2408,6 +2408,7 @@ fn statement_start(stmt: &react_compiler_ast::statements::Statement) -> Option<u
         Statement::DeclareTypeAlias(s) => s.base.start,
         Statement::DeclareOpaqueType(s) => s.base.start,
         Statement::EnumDeclaration(s) => s.base.start,
+        Statement::Unknown(s) => s.base().start,
     }
 }
 
@@ -2458,6 +2459,7 @@ fn statement_end(stmt: &react_compiler_ast::statements::Statement) -> Option<u32
         Statement::DeclareTypeAlias(s) => s.base.end,
         Statement::DeclareOpaqueType(s) => s.base.end,
         Statement::EnumDeclaration(s) => s.base.end,
+        Statement::Unknown(s) => s.base().end,
     }
 }
 
@@ -2509,6 +2511,7 @@ fn statement_loc(stmt: &react_compiler_ast::statements::Statement) -> Option<Sou
         Statement::DeclareTypeAlias(s) => s.base.loc.clone(),
         Statement::DeclareOpaqueType(s) => s.base.loc.clone(),
         Statement::EnumDeclaration(s) => s.base.loc.clone(),
+        Statement::Unknown(s) => s.base().loc.clone(),
     };
     convert_opt_loc(&loc)
 }
@@ -2807,16 +2810,20 @@ fn lower_block_statement_inner(
                 .collect();
             let should_hoist = is_hoisted_kind || !refs_in_nested_fn.is_empty();
             if should_hoist {
-                // Only hoist if the binding is declared as a direct statement of
-                // THIS block. Bindings declared in child control flow blocks
-                // (if/for branches) will be hoisted when those blocks are
-                // recursively lowered. This prevents DeclareContext from being
-                // emitted before a control flow terminal for variables declared
-                // within a branch, which would widen the reactive scope.
-                if !is_binding_in_block_direct_statements(
-                    &builder.scope_info().bindings[binding_id.0 as usize],
-                    &block.body,
-                ) {
+                // Bindings pulled in from CHILD block scopes (the
+                // scope_bindings_with_children descent compensates for scope
+                // splitting) only hoist when declared as a direct statement of
+                // THIS block; ones declared inside nested control-flow blocks
+                // are handled when those blocks are recursively lowered. TS
+                // never sees child-block bindings here (Babel's
+                // stmt.scope.bindings holds only the block's own scope), so the
+                // guard must NOT apply to own-scope bindings: catch params and
+                // for-in/for-of head vars belong to the block's scope without
+                // being declared by any direct statement, and TS hoists them.
+                let binding_data = &builder.scope_info().bindings[binding_id.0 as usize];
+                if binding_data.scope != scope_id
+                    && !is_binding_in_block_direct_statements(binding_data, &block.body)
+                {
                     continue;
                 }
                 // For hoisted bindings (function declarations), use the first reference
@@ -4196,6 +4203,29 @@ fn lower_statement(
         | Statement::DeclareInterface(_)
         | Statement::DeclareTypeAlias(_)
         | Statement::DeclareOpaqueType(_) => {}
+        // The TS reference can only reach its equivalent default case via
+        // assertExhaustive (Babel's closed Statement type), so it crashes;
+        // here unmodeled syntax is reachable by construction and degrades
+        // like the other unsupported-statement arms instead.
+        Statement::Unknown(unknown) => {
+            let loc = convert_opt_loc(&unknown.base().loc);
+            let node_type = unknown.node_type().to_string();
+            builder.record_error(CompilerErrorDetail {
+                category: ErrorCategory::UnsupportedSyntax,
+                reason: format!("Unsupported statement kind '{node_type}'"),
+                description: None,
+                loc: loc.clone(),
+                suggestions: None,
+            })?;
+            lower_value_to_temporary(
+                builder,
+                InstructionValue::UnsupportedNode {
+                    node_type: Some(node_type),
+                    original_node: Some(unknown.raw().clone()),
+                    loc,
+                },
+            )?;
+        }
     }
     Ok(())
 }
@@ -5745,40 +5775,72 @@ fn lower_function_declaration(
     };
     let fn_place = lower_value_to_temporary(builder, fn_value)?;
 
-    // Resolve the binding for the function name and store.
-    // Use position-based resolution (resolve_identifier) which finds the binding
-    // in the parent scope containing the function declaration. This matches the TS
-    // behavior where Babel's `path.scope.getBinding()` resolves from the parent
-    // scope for function declaration id nodes. If the function body has a `const`
-    // that shadows the function name (e.g., `function zoom() { const zoom = ... }`),
-    // position-based resolution correctly finds the outer function binding, not the
-    // inner const binding.
+    // Resolve the binding for the function name and store. TS resolves the id
+    // via Babel's `path.scope.getBinding(name)`, which starts at the function's
+    // OWN scope: a body-level local that shadows the function's name resolves
+    // to that inner binding — storing the function into the shadow while
+    // references elsewhere resolve to the hoisted binding in the parent scope.
+    // This is a known TS quirk that we reproduce for parity (see
+    // todo-repro-named-function-with-shadowed-local-same-name). Fall back to
+    // node-based resolution when the scope walk fails (degraded scope info,
+    // e.g. synthetic scopes, or backends that split function-body scopes).
     if let Some(ref name) = func_name {
         if let Some(id_node) = &func_decl.id {
             let start = id_node.base.start.unwrap_or(0);
             let ident_loc = convert_opt_loc(&id_node.base.loc);
-            let mut binding =
-                builder.resolve_identifier(name, start, ident_loc.clone(), id_node.base.node_id)?;
-            if matches!(&binding, VariableBinding::Global { .. }) {
-                // For function redeclarations (e.g., `function x() {} function x() {}`),
-                // the redeclaration's identifier may not be in ref_node_id_to_binding
-                // (OXC/SWC don't map constant violations). Retry using the first
-                // declaration's node_id from the scope chain.
-                let fallback = {
-                    let si = builder.scope_info();
-                    let scope_id = si
-                        .resolve_scope_for_node(func_decl.base.node_id)
-                        .unwrap_or(si.program_scope);
-                    si.get_binding(scope_id, name).map(|bid| {
-                        let b = &si.bindings[bid.0 as usize];
-                        (b.declaration_start.unwrap_or(0), b.declaration_node_id)
-                    })
-                };
-                if let Some((ds, ds_node_id)) = fallback {
-                    binding =
-                        builder.resolve_identifier(name, ds, ident_loc.clone(), ds_node_id)?;
+            let scope_binding = builder.get_function_declaration_binding(function_scope, name);
+            let mut is_context = false;
+            let binding = match scope_binding {
+                Some(binding_id) => {
+                    is_context = builder.is_context_binding(binding_id);
+                    let binding_kind = crate::convert_binding_kind(
+                        &builder.scope_info().bindings[binding_id.0 as usize].kind,
+                    );
+                    let identifier =
+                        builder.resolve_binding_with_loc(name, binding_id, ident_loc.clone())?;
+                    VariableBinding::Identifier {
+                        identifier,
+                        binding_kind,
+                    }
                 }
-            }
+                None => {
+                    let mut binding = builder.resolve_identifier(
+                        name,
+                        start,
+                        ident_loc.clone(),
+                        id_node.base.node_id,
+                    )?;
+                    if matches!(&binding, VariableBinding::Global { .. }) {
+                        // For function redeclarations (e.g., `function x() {} function x() {}`),
+                        // the redeclaration's identifier may not be in ref_node_id_to_binding
+                        // (OXC/SWC don't map constant violations). Retry using the first
+                        // declaration's node_id from the scope chain.
+                        let fallback = {
+                            let si = builder.scope_info();
+                            let scope_id = si
+                                .resolve_scope_for_node(func_decl.base.node_id)
+                                .unwrap_or(si.program_scope);
+                            si.get_binding(scope_id, name).map(|bid| {
+                                let b = &si.bindings[bid.0 as usize];
+                                (b.declaration_start.unwrap_or(0), b.declaration_node_id)
+                            })
+                        };
+                        if let Some((ds, ds_node_id)) = fallback {
+                            binding = builder.resolve_identifier(
+                                name,
+                                ds,
+                                ident_loc.clone(),
+                                ds_node_id,
+                            )?;
+                        }
+                    }
+                    if matches!(&binding, VariableBinding::Identifier { .. }) {
+                        is_context =
+                            builder.is_context_identifier(name, start, id_node.base.node_id);
+                    }
+                    binding
+                }
+            };
             match binding {
                 VariableBinding::Identifier { identifier, .. } => {
                     // Don't override the identifier's declaration loc here.
@@ -5793,7 +5855,7 @@ fn lower_function_declaration(
                         effect: Effect::Unknown,
                         loc: loc.clone(),
                     };
-                    if builder.is_context_identifier(name, start, id_node.base.node_id) {
+                    if is_context {
                         lower_value_to_temporary(
                             builder,
                             InstructionValue::StoreContext {
@@ -6591,6 +6653,13 @@ fn is_reorderable_expression(
                     .iter()
                     .all(|arg| is_reorderable_expression(builder, arg, allow_local_identifiers))
         }
+        Expression::NewExpression(new_expr) => {
+            is_reorderable_expression(builder, &new_expr.callee, allow_local_identifiers)
+                && new_expr
+                    .arguments
+                    .iter()
+                    .all(|arg| is_reorderable_expression(builder, arg, allow_local_identifiers))
+        }
         // TypeScript/Flow type wrappers: recurse into the inner expression
         Expression::TSAsExpression(ts) => {
             is_reorderable_expression(builder, &ts.expression, allow_local_identifiers)
@@ -6727,8 +6796,13 @@ fn gather_captured_context(
             continue;
         }
         // Skip function/class declaration names that are not expression references.
+        // Skip type-annotation references: TS's gatherCapturedContext traverse
+        // skips TypeAnnotation/TSTypeAnnotation/TypeAlias/TSTypeAliasDeclaration
+        // subtrees, so identifiers there never become captures (they DO still
+        // feed FindContextIdentifiers and the hoisting analysis, which have no
+        // such skip in TS).
         if let Some(entry) = identifier_locs.get(&ref_nid) {
-            if entry.is_declaration_name {
+            if entry.is_declaration_name || entry.in_type_annotation {
                 continue;
             }
         }
@@ -6744,6 +6818,17 @@ fn gather_captured_context(
         }
         if pure_scopes.contains(&binding.scope) {
             let ref_start = identifier_locs.get(&ref_nid).map(|e| e.start).unwrap_or(0);
+            // Skip references whose start offset aliases the binding's own
+            // declaration offset. Hermes desugars (component syntax) reuse the
+            // original source offsets for generated nodes, so a sibling
+            // reference structurally OUTSIDE this function (e.g. the forwardRef
+            // argument naming the desugared inner function) can fall inside the
+            // function's position range and alias the declaration position. In
+            // real source a non-declaration reference can never share its
+            // declaration's offset, so this only filters desugared aliases.
+            if binding.declaration_start == Some(ref_start) {
+                continue;
+            }
             let loc = identifier_locs.get(&ref_nid).map(|entry| {
                 if let Some(oe_loc) = &entry.opening_element_loc {
                     oe_loc.clone()

@@ -4,13 +4,21 @@ Status snapshot (after the current stack lands):
 
 | Variant | Score        | Failures |
 | ------- | ------------ | -------- |
-| Babel   | 1788 / 1795  | 7        |
-| SWC     | 1780 / 1795  | 15       |
+| Babel   | 1792 / 1802  | 10       |
+| SWC     | 1786 / 1802  | 16       |
 | OXC     | 1704 / 1795  | 91       |
 
-`cargo test --workspace`: 56 passed, 0 failed.
+The corpus grew by the three `ts-*` module-interop fixtures (1799 →
+1802 on this branch). The Babel/SWC rows are measured on this branch
+and their failure sets are byte-identical to the pre-stack baseline;
+the OXC row predates the fixtures and has not been re-measured.
+
+`cargo test --workspace`: 84 passed, 0 failed.
 
 ## SWC
+
+(Historical, pre-ts-interop-stack triage on the old staging base; current
+snapshot at top.)
 
 The 15 remaining SWC e2e failures fall into three groups. Each line names the
 fixture and the failure mode; the group it sits in dictates the appropriate
@@ -111,7 +119,37 @@ Each line names the failure mode and a sketch of where to look.
 	`TSTypeParameterInstantiation` in `convert_ast.rs` AND deserialization
 	in `convert_ast_reverse.rs::convert_ts_type_from_json`.
 
+## Cross-frontend: TypeScript module interop statements
+
+Three `ts-*` fixtures pin how TS module-interop statements
+(`import x = require(...)`, `export = x`, `export as namespace X`) must
+behave: the statement is preserved in output and the file's functions
+still compile.
+
+- **Babel/NAPI** and **SWC** now preserve these end to end. Both flow
+	the statements through `Statement::Unknown` (the raw Babel-shaped
+	carrier in `react_compiler_ast`); the SWC frontend rebuilds the swc
+	module declarations in `convert_ast_reverse.rs` and works around an
+	upstream swc_ecma_codegen bug that prints `TsNamespaceExportDecl`
+	as `export = X` (`react_compiler_swc/src/ts_namespace_export_fixup.rs`,
+	which also carries the guard test that flags when the upstream fix
+	lands). Fixtures renamed from `todo-ts-*` to `ts-*`; the
+	`SproutTodoFilter` entry for the namespace fixture remains (sprout's
+	evaluator cannot evaluate `export as namespace`).
+- **OXC** remains deferred: `todo!()` panics in
+	`react_compiler_oxc/src/convert_ast.rs` (arms
+	`TSImportEqualsDeclaration` / `TSExportAssignment` /
+	`TSNamespaceExportDeclaration`; the sibling `TSGlobalDeclaration`
+	arm is also unmodeled but unreachable from Babel-parsed fixtures,
+	which represent `declare global` as `TSModuleDeclaration`).
+
+- `ts-import-equals-declaration.ts`
+- `ts-export-assignment.ts`
+- `ts-namespace-export-declaration.ts`
+
 ## Babel
+
+(Historical, pre-ts-interop-stack numbers; current snapshot at top.)
 
 **TODO: scope this out.** Babel is at 1788 / 1795 (7 failures). These have
 been the baseline throughout the SWC parity stack and were not touched, so the
@@ -127,6 +165,8 @@ bash compiler/scripts/test-e2e.sh --no-color --variant babel
 …and triage the resulting failures into A/B/C groups under this section.
 
 ## OXC
+
+(Historical, pre-ts-interop-stack numbers; current snapshot at top.)
 
 **TODO: scope this out.** OXC is at 1704 / 1795 (91 failures). The CLI
 `filename` fix in commit c30f0d6f bumped this by +2 from the 1702 baseline,
@@ -146,6 +186,8 @@ type annotations, UTF-16/WTF-8 handling) since both frontends share the
 post-conversion pipeline.
 
 ## How this stack got here
+
+(Historical, pre-ts-interop-stack numbers; current snapshot at top.)
 
 - `compiler/scripts/test-e2e.sh --variant swc` baseline was 1742 / 1795
 	(53 failures) before this stack.

@@ -74,15 +74,7 @@ fn round_trip_all_fixtures() {
     // Fixtures with known issues that can't be fixed in the AST crate:
     // - lone-surrogate-string-values: contains lone Unicode surrogates (\uD800)
     //   that serde_json rejects during deserialization.
-    // - predicate: null on function nodes is dropped because serde Option<T>
-    //   deserializes JSON null as None, and skip_serializing_if then omits it.
-    let known_failures: &[&str] = &[
-        "lone-surrogate-string-values",
-        "component-in-object-method-body.flow",
-        "error.todo-hoist-type-alias-before-declaration",
-        "error.todo-round2_severity_diff",
-        "error.todo-update-expression-context-variable-via-type-annotation",
-    ];
+    let known_failures: &[&str] = &["lone-surrogate-string-values"];
 
     for entry in walkdir::WalkDir::new(&json_dir)
         .into_iter()

@@ -18,6 +18,15 @@ const skipFilter = new Set([
   'todo-round3_promote_used_temps',
 
   /**
+   * `export as namespace` is a .d.ts-shaped construct that breaks sprout's
+   * second-stage TS->CJS evaluator transform itself. The sibling ts-* interop
+   * fixtures are deliberately not skipped: that transform handles their
+   * syntax, so they pass sprout (still producing the standard "Fixture not
+   * implemented" eval result).
+   */
+  'ts-namespace-export-declaration',
+
+  /**
    * Observable different in logging between Forget and non-Forget
    */
   'early-return-no-declarations-reassignments-dependencies',
