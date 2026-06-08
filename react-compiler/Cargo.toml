@@ -6,27 +6,27 @@ members = [
 resolver = "3"
 
 [workspace.package]
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 license = "MIT"
 description = "Rust port of the React Compiler, vendored from facebook/react."
 repository = "https://github.com/oxc-project/oxc-react-compiler"
 
 [workspace.dependencies]
-react_compiler = { package = "forked_react_compiler", version = "0.1.2", path = "crates/react_compiler" }
-react_compiler_ast = { package = "forked_react_compiler_ast", version = "0.1.2", path = "crates/react_compiler_ast" }
-react_compiler_diagnostics = { package = "forked_react_compiler_diagnostics", version = "0.1.2", path = "crates/react_compiler_diagnostics" }
-react_compiler_e2e_cli = { package = "forked_react_compiler_e2e_cli", version = "0.1.2", path = "crates/react_compiler_e2e_cli" }
-react_compiler_hir = { package = "forked_react_compiler_hir", version = "0.1.2", path = "crates/react_compiler_hir" }
-react_compiler_inference = { package = "forked_react_compiler_inference", version = "0.1.2", path = "crates/react_compiler_inference" }
-react_compiler_lowering = { package = "forked_react_compiler_lowering", version = "0.1.2", path = "crates/react_compiler_lowering" }
-react_compiler_napi = { package = "forked_react_compiler_napi", version = "0.1.2", path = "packages/babel-plugin-react-compiler-rust/native" }
-react_compiler_optimization = { package = "forked_react_compiler_optimization", version = "0.1.2", path = "crates/react_compiler_optimization" }
-react_compiler_oxc = { package = "forked_react_compiler_oxc", version = "0.1.2", path = "crates/react_compiler_oxc" }
-react_compiler_reactive_scopes = { package = "forked_react_compiler_reactive_scopes", version = "0.1.2", path = "crates/react_compiler_reactive_scopes" }
-react_compiler_ssa = { package = "forked_react_compiler_ssa", version = "0.1.2", path = "crates/react_compiler_ssa" }
-react_compiler_swc = { package = "forked_react_compiler_swc", version = "0.1.2", path = "crates/react_compiler_swc" }
-react_compiler_typeinference = { package = "forked_react_compiler_typeinference", version = "0.1.2", path = "crates/react_compiler_typeinference" }
-react_compiler_utils = { package = "forked_react_compiler_utils", version = "0.1.2", path = "crates/react_compiler_utils" }
-react_compiler_validation = { package = "forked_react_compiler_validation", version = "0.1.2", path = "crates/react_compiler_validation" }
+react_compiler = { package = "forked_react_compiler", version = "0.1.3", path = "crates/react_compiler" }
+react_compiler_ast = { package = "forked_react_compiler_ast", version = "0.1.3", path = "crates/react_compiler_ast" }
+react_compiler_diagnostics = { package = "forked_react_compiler_diagnostics", version = "0.1.3", path = "crates/react_compiler_diagnostics" }
+react_compiler_e2e_cli = { package = "forked_react_compiler_e2e_cli", version = "0.1.3", path = "crates/react_compiler_e2e_cli" }
+react_compiler_hir = { package = "forked_react_compiler_hir", version = "0.1.3", path = "crates/react_compiler_hir" }
+react_compiler_inference = { package = "forked_react_compiler_inference", version = "0.1.3", path = "crates/react_compiler_inference" }
+react_compiler_lowering = { package = "forked_react_compiler_lowering", version = "0.1.3", path = "crates/react_compiler_lowering" }
+react_compiler_napi = { package = "forked_react_compiler_napi", version = "0.1.3", path = "packages/babel-plugin-react-compiler-rust/native" }
+react_compiler_optimization = { package = "forked_react_compiler_optimization", version = "0.1.3", path = "crates/react_compiler_optimization" }
+react_compiler_oxc = { package = "forked_react_compiler_oxc", version = "0.1.3", path = "crates/react_compiler_oxc" }
+react_compiler_reactive_scopes = { package = "forked_react_compiler_reactive_scopes", version = "0.1.3", path = "crates/react_compiler_reactive_scopes" }
+react_compiler_ssa = { package = "forked_react_compiler_ssa", version = "0.1.3", path = "crates/react_compiler_ssa" }
+react_compiler_swc = { package = "forked_react_compiler_swc", version = "0.1.3", path = "crates/react_compiler_swc" }
+react_compiler_typeinference = { package = "forked_react_compiler_typeinference", version = "0.1.3", path = "crates/react_compiler_typeinference" }
+react_compiler_utils = { package = "forked_react_compiler_utils", version = "0.1.3", path = "crates/react_compiler_utils" }
+react_compiler_validation = { package = "forked_react_compiler_validation", version = "0.1.3", path = "crates/react_compiler_validation" }
 
