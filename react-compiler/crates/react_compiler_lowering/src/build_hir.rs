@@ -4,8 +4,8 @@ use indexmap::IndexMap;
 use indexmap::IndexSet;
 use react_compiler_ast::scope::BindingId;
 use react_compiler_ast::scope::BindingKind as AstBindingKind;
-use react_compiler_ast::scope::ScopeInfo;
 use react_compiler_ast::scope::ScopeId;
+use react_compiler_ast::scope::ScopeInfo;
 use react_compiler_ast::scope::ScopeKind;
 use react_compiler_diagnostics::CompilerDiagnostic;
 use react_compiler_diagnostics::CompilerDiagnosticDetail;
@@ -68,9 +68,7 @@ fn serialize_statement(
 }
 
 /// Serialize a pattern to a serde_json::Value for UnsupportedNode's original_node.
-fn serialize_pattern(
-    pat: &react_compiler_ast::patterns::PatternLike,
-) -> Option<serde_json::Value> {
+fn serialize_pattern(pat: &react_compiler_ast::patterns::PatternLike) -> Option<serde_json::Value> {
     serde_json::to_value(pat).ok()
 }
 
@@ -525,7 +523,11 @@ fn lower_member_expression_with_object(
                     property: MemberProperty::Literal(PropertyLiteral::String("".to_string())),
                     value: InstructionValue::UnsupportedNode {
                         node_type: Some("OptionalMemberExpression".to_string()),
-                        original_node: serialize_expression(&react_compiler_ast::expressions::Expression::OptionalMemberExpression(member.clone())),
+                        original_node: serialize_expression(
+                            &react_compiler_ast::expressions::Expression::OptionalMemberExpression(
+                                member.clone(),
+                            ),
+                        ),
                         loc,
                     },
                 });
@@ -604,7 +606,11 @@ fn lower_member_expression_impl(
                     property: MemberProperty::Literal(PropertyLiteral::String("".to_string())),
                     value: InstructionValue::UnsupportedNode {
                         node_type: Some("MemberExpression".to_string()),
-                        original_node: serialize_expression(&react_compiler_ast::expressions::Expression::MemberExpression(member.clone())),
+                        original_node: serialize_expression(
+                            &react_compiler_ast::expressions::Expression::MemberExpression(
+                                member.clone(),
+                            ),
+                        ),
                         loc,
                     },
                 });
@@ -1254,7 +1260,9 @@ fn lower_expression(
                                     })?;
                                     return Ok(InstructionValue::UnsupportedNode {
                                         node_type: Some("Identifier".to_string()),
-                                        original_node: serialize_expression(&Expression::AssignmentExpression(expr.clone())),
+                                        original_node: serialize_expression(
+                                            &Expression::AssignmentExpression(expr.clone()),
+                                        ),
                                         loc: ident_loc,
                                     });
                                 }
@@ -1438,7 +1446,9 @@ fn lower_expression(
                         })?;
                         return Ok(InstructionValue::UnsupportedNode {
                             node_type: Some("AssignmentExpression".to_string()),
-                            original_node: serialize_expression(&Expression::AssignmentExpression(expr.clone())),
+                            original_node: serialize_expression(&Expression::AssignmentExpression(
+                                expr.clone(),
+                            )),
                             loc,
                         });
                     }
@@ -1449,7 +1459,9 @@ fn lower_expression(
                     None => {
                         return Ok(InstructionValue::UnsupportedNode {
                             node_type: Some("AssignmentExpression".to_string()),
-                            original_node: serialize_expression(&Expression::AssignmentExpression(expr.clone())),
+                            original_node: serialize_expression(&Expression::AssignmentExpression(
+                                expr.clone(),
+                            )),
                             loc,
                         });
                     }
@@ -1588,7 +1600,9 @@ fn lower_expression(
                         })?;
                         Ok(InstructionValue::UnsupportedNode {
                             node_type: Some("AssignmentExpression".to_string()),
-                            original_node: serialize_expression(&Expression::AssignmentExpression(expr.clone())),
+                            original_node: serialize_expression(&Expression::AssignmentExpression(
+                                expr.clone(),
+                            )),
                             loc,
                         })
                     }
@@ -1656,20 +1670,16 @@ fn lower_expression(
             );
             Ok(InstructionValue::LoadLocal { place, loc })
         }
-        Expression::ArrowFunctionExpression(_) => {
-            Ok(lower_function_to_value(
-                builder,
-                expr,
-                FunctionExpressionType::ArrowFunctionExpression,
-            )?)
-        }
-        Expression::FunctionExpression(_) => {
-            Ok(lower_function_to_value(
-                builder,
-                expr,
-                FunctionExpressionType::FunctionExpression,
-            )?)
-        }
+        Expression::ArrowFunctionExpression(_) => Ok(lower_function_to_value(
+            builder,
+            expr,
+            FunctionExpressionType::ArrowFunctionExpression,
+        )?),
+        Expression::FunctionExpression(_) => Ok(lower_function_to_value(
+            builder,
+            expr,
+            FunctionExpressionType::FunctionExpression,
+        )?),
         Expression::ObjectExpression(obj) => {
             let loc = convert_opt_loc(&obj.base.loc);
             let mut properties: Vec<ObjectPropertyOrSpread> = Vec::new();
@@ -5166,9 +5176,12 @@ fn lower_assignment(
             )?)
         }
 
-        // TS assignment-target wrappers (e.g. `(x as T) = ...`). The TS-faithful
-        // Todo is recorded once in `find_context_identifiers`; lowering itself
-        // never reaches a successful path for these, so do not record again.
+        // TS assignment-target wrappers (e.g. `(x as T) = ...`) and the Flow
+        // analogue `TypeCastExpression`. For destructuring targets the
+        // TS-faithful Todo is recorded once in `find_context_identifiers`, so
+        // it is not recorded again here. `for (... of ...)` heads also reach
+        // this arm directly without that Todo; emitted code matches the TS
+        // reference there, but the recorded diagnostics do not yet.
         PatternLike::TSAsExpression(_)
         | PatternLike::TSSatisfiesExpression(_)
         | PatternLike::TSNonNullExpression(_)

@@ -1,10 +1,13 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::common::BaseNode;
-use crate::jsx::{JSXElement, JSXFragment};
+use crate::jsx::JSXElement;
+use crate::jsx::JSXFragment;
 use crate::literals::*;
 use crate::operators::*;
-use crate::patterns::{AssignmentPattern, PatternLike};
+use crate::patterns::AssignmentPattern;
+use crate::patterns::PatternLike;
 use crate::statements::BlockStatement;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
