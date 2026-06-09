@@ -3,7 +3,6 @@
 
 ```javascript
 import {useState} from 'react';
-
 const bar = () => ({data: null});
 
 export const useFoot = () => {
@@ -34,14 +33,14 @@ Invariant: Expected all references to a variable to be consistently local or con
 
 Identifier <unknown> err$7 is referenced as a context variable, but was previously referenced as a local variable.
 
-error.bug-invariant-local-or-context-references.ts:16:13
-  14 |     setState(_prevState => ({
-  15 |       loading: false,
-> 16 |       error: err,
+error.bug-invariant-local-or-context-references.ts:15:13
+  13 |     setState(_prevState => ({
+  14 |       loading: false,
+> 15 |       error: err,
      |              ^^^ this is local
-  17 |     }));
-  18 |   }
-  19 | };
+  16 |     }));
+  17 |   }
+  18 | };
 ```
           
       

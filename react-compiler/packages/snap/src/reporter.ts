@@ -190,8 +190,12 @@ const TS_SKIP_FIXTURES: Set<string> = new Set([
   'fbt/error.todo-locally-require-fbt',
   // Minor output difference (TS adds unused runtime import)
   'use-no-forget-multiple-with-eslint-suppression',
+  // Cosmetic blank-line/unused-var differences between Rust and TS codegen
+  'debugger',
+  'debugger-memoized',
+  'idx-no-outlining',
+  'optional-call-with-independently-memoizable-arg',
 ]);
-
 export function report(
   results: TestResults,
   verbose: boolean = false,

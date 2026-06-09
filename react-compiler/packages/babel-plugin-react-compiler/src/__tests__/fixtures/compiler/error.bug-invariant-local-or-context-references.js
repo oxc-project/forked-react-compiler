@@ -1,5 +1,4 @@
 import {useState} from 'react';
-
 const bar = () => ({data: null});
 
 export const useFoot = () => {

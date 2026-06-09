@@ -1759,9 +1759,9 @@ impl ReverseCtx {
             | PatternLike::TSSatisfiesExpression(_)
             | PatternLike::TSNonNullExpression(_)
             | PatternLike::TSTypeAssertion(_)
-            | PatternLike::TypeCastExpression(_) => AssignTarget::Simple(SimpleAssignTarget::Ident(
-                self.binding_ident("__unknown__", DUMMY_SP),
-            )),
+            | PatternLike::TypeCastExpression(_) => AssignTarget::Simple(
+                SimpleAssignTarget::Ident(self.binding_ident("__unknown__", DUMMY_SP)),
+            ),
         }
     }
 
