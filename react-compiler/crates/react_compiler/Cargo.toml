@@ -19,7 +19,6 @@ react_compiler_ssa = { workspace = true }
 react_compiler_typeinference = { workspace = true }
 react_compiler_validation = { workspace = true }
 indexmap = "2"
-regex = { package = "regex-lite", version = "0.1" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 

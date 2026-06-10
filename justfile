@@ -1,4 +1,4 @@
-# This repo vendors the React Compiler (Rust port) from facebook/react PR #36173
+# This repo vendors the React Compiler (Rust port) from react/react's main branch
 # into ./react-compiler, then (editing only Cargo.toml for crate naming) sets each
 # crate's published name to `forked_react_compiler_*` while keeping the lib/import
 # name, source, and directories as upstream's `react_compiler_*`, and adds the
@@ -10,7 +10,7 @@
 # Both are re-applied every sync because the snapshot is taken fresh.
 #
 #   just import       # one-time: create ./react-compiler (transformed)
-#   just sync         # update ./react-compiler to the latest PR state (re-transformed)
+#   just sync         # update ./react-compiler to the latest upstream state (re-transformed)
 #   just codemod      # (re)run codemod on ./react-compiler in place
 #   just patch        # apply ./patches/*.patch (Rust source changes the codemod can't express)
 #   just check        # cargo check the vendored workspace
@@ -18,8 +18,8 @@
 #   just publish      # publish forked_react_compiler + its deps via cargo-release-oxc
 #   just status       # show which upstream commit is currently vendored
 
-react_repo := "https://github.com/facebook/react.git"
-pr_ref     := "pull/36173/head"
+react_repo := "https://github.com/react/react.git"
+git_ref    := "main"
 src_dir    := "compiler"          # path of the compiler inside the react monorepo
 prefix     := "react-compiler"    # where it lives in THIS repo
 
@@ -34,7 +34,7 @@ import: sync
 sync:
     #!/usr/bin/env bash
     set -euo pipefail
-    git fetch --depth=1 --no-tags {{react_repo}} {{pr_ref}}
+    git fetch --depth=1 --no-tags {{react_repo}} {{git_ref}}
     upstream="$(git rev-parse FETCH_HEAD)"
     tree="$(git rev-parse "FETCH_HEAD:{{src_dir}}")"
     # Preserve the currently-published version across the wipe so cargo-release-oxc
@@ -49,9 +49,9 @@ sync:
     just patch
     git add -A {{prefix}}
     if git diff --cached --quiet -- {{prefix}}; then
-        echo "{{prefix}} already at react {{pr_ref}} @ ${upstream} — nothing to commit."
+        echo "{{prefix}} already at react {{git_ref}} @ ${upstream} — nothing to commit."
     else
-        git commit -q -m "vendor: react-compiler from {{pr_ref}} @ ${upstream} (forked_react_compiler)"
+        git commit -q -m "vendor: react-compiler from {{git_ref}} @ ${upstream} (forked_react_compiler)"
         echo "Committed {{prefix}} @ ${upstream}."
     fi
 

@@ -9,7 +9,7 @@ resolver = "3"
 version = "0.1.4"
 edition = "2024"
 license = "MIT"
-description = "Rust port of the React Compiler, vendored from facebook/react."
+description = "Rust port of the React Compiler, vendored from react/react."
 repository = "https://github.com/oxc-project/oxc-react-compiler"
 
 [workspace.dependencies]
@@ -29,4 +29,13 @@ react_compiler_swc = { package = "forked_react_compiler_swc", version = "0.1.4",
 react_compiler_typeinference = { package = "forked_react_compiler_typeinference", version = "0.1.4", path = "crates/react_compiler_typeinference" }
 react_compiler_utils = { package = "forked_react_compiler_utils", version = "0.1.4", path = "crates/react_compiler_utils" }
 react_compiler_validation = { package = "forked_react_compiler_validation", version = "0.1.4", path = "crates/react_compiler_validation" }
+
+# Sizes the shipped napi binary (index.node). Measured on arm64 macOS:
+# default release is 11.2MB; fat LTO + one codegen unit + stripping symbols
+# lands at 7.2MB with no runtime cost. Release builds get slower; debug
+# builds (snap --rust, the e2e harness) are unaffected.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
 
