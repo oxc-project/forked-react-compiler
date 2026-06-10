@@ -10,7 +10,6 @@
 //!   - `[lib] name`      -> `react_compiler_X`         (kept, so `use react_compiler_X` still works)
 //!   - inherits version/edition/license/description/repository from `[workspace.package]`
 //!   - internal deps become `{ workspace = true }`
-//!   - any `regex` dep is swapped to a `regex-lite` package rename (import name kept)
 //!   - `publish` = true for `react_compiler` and its (transitive) deps; false for the rest
 //! Root `[workspace.dependencies]` maps each import name to its published package:
 //!   `react_compiler_X = { package = "forked_react_compiler_X", version, path }`
@@ -245,28 +244,7 @@ fn edit_member_manifest(member: &Member, internal: &BTreeSet<&str>, publish: boo
         }
     }
 
-    swap_regex_lite(&mut doc);
-
     fs::write(&member.manifest, doc.to_string()).expect("write manifest");
-}
-
-/// Replace the `regex` dependency with a `regex-lite` package rename, keeping the
-/// import name `regex` so upstream's `use regex::Regex;` needs no change. The
-/// compiler only uses a simple anchored pattern (`captures`/`get`), all of which
-/// `regex-lite` supports — and it pulls in far less than full `regex`. Idempotent.
-fn swap_regex_lite(doc: &mut DocumentMut) {
-    for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
-        let Some(table) = doc.get_mut(section).and_then(Item::as_table_mut) else {
-            continue;
-        };
-        if !table.contains_key("regex") {
-            continue;
-        }
-        let mut dep = InlineTable::new();
-        dep.insert("package", Value::from("regex-lite"));
-        dep.insert("version", Value::from("0.1"));
-        table.insert("regex", value(dep));
-    }
 }
 
 /// A dotted `field.workspace = true` item.
