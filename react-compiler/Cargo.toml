@@ -10,7 +10,7 @@ version = "0.1.4"
 edition = "2024"
 license = "MIT"
 description = "Rust port of the React Compiler, vendored from react/react."
-repository = "https://github.com/oxc-project/oxc-react-compiler"
+repository = "https://github.com/oxc-project/forked-react-compiler"
 
 [workspace.dependencies]
 react_compiler = { package = "forked_react_compiler", version = "0.1.4", path = "crates/react_compiler" }
