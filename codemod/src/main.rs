@@ -28,7 +28,7 @@ use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 const EDITION: &str = "2024";
 const LICENSE: &str = "MIT";
 const DESCRIPTION: &str = "Rust port of the React Compiler, vendored from react/react.";
-const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
+const REPOSITORY: &str = "https://github.com/oxc-project/forked-react-compiler";
 /// React's MIT LICENSE, kept as a local copy (`./LICENSE`) and linked into the
 /// tool so syncing needs no network for it.
 const LICENSE_TEXT: &str = include_str!("../../LICENSE");
