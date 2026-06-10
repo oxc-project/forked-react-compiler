@@ -8,7 +8,7 @@ All recipes live in the [`justfile`](./justfile); run `just --list` for the full
 ## Syncing from upstream
 
 ```sh
-just sync      # re-extract react's compiler/ (PR #36173), re-run codemod, re-apply patches, commit
+just sync      # re-extract react's compiler/ (from main), re-run codemod, re-apply patches, commit
 just status    # show which upstream commit is currently vendored
 just check     # cargo check the vendored workspace
 ```

@@ -28,7 +28,7 @@ use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 // resync never reverts a released version.
 const EDITION: &str = "2024";
 const LICENSE: &str = "MIT";
-const DESCRIPTION: &str = "Rust port of the React Compiler, vendored from facebook/react.";
+const DESCRIPTION: &str = "Rust port of the React Compiler, vendored from react/react.";
 const REPOSITORY: &str = "https://github.com/oxc-project/oxc-react-compiler";
 /// React's MIT LICENSE, kept as a local copy (`./LICENSE`) and linked into the
 /// tool so syncing needs no network for it.
