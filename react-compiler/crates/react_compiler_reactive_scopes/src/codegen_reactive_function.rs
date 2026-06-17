@@ -195,6 +195,7 @@ pub fn codegen_function(
         if cx.env.config.enable_reset_cache_on_source_file_changes == Some(true) {
             if let Some(ref code) = cx.env.code {
                 use hmac::Hmac;
+                use hmac::KeyInit;
                 use hmac::Mac;
                 use sha2::Sha256;
                 type HmacSha256 = Hmac<Sha256>;
@@ -202,7 +203,12 @@ pub fn codegen_function(
                 // Node's createHmac uses the code as the HMAC key and hashes empty data.
                 let mac = HmacSha256::new_from_slice(code.as_bytes())
                     .expect("HMAC can take key of any size");
-                let hash = format!("{:x}", mac.finalize().into_bytes());
+                let hash = mac
+                    .finalize()
+                    .into_bytes()
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<String>();
                 let cache_index = cx.alloc_cache_index(); // Reserve slot 0 for the hash check
                 Some((cache_index, hash))
             } else {

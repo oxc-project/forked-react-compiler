@@ -15,7 +15,7 @@ indexmap = { version = "2", features = ["serde"] }
 
 [dev-dependencies]
 walkdir = "2"
-similar = "2"
+similar = "3"
 
 [lib]
 name = "react_compiler_ast"
