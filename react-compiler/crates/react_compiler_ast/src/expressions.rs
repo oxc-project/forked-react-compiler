@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use serde::Serialize;
 
 use crate::common::BaseNode;
@@ -11,7 +10,7 @@ use crate::patterns::AssignmentPattern;
 use crate::patterns::PatternLike;
 use crate::statements::BlockStatement;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Identifier {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -28,7 +27,7 @@ pub struct Identifier {
     pub decorators: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum Expression {
     Identifier(Identifier),
@@ -81,7 +80,7 @@ pub enum Expression {
     TypeCastExpression(TypeCastExpression),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CallExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -103,7 +102,7 @@ pub struct CallExpression {
     pub optional: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MemberExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -112,7 +111,7 @@ pub struct MemberExpression {
     pub computed: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OptionalCallExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -133,7 +132,7 @@ pub struct OptionalCallExpression {
     pub type_arguments: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OptionalMemberExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -143,7 +142,7 @@ pub struct OptionalMemberExpression {
     pub optional: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BinaryExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -152,7 +151,7 @@ pub struct BinaryExpression {
     pub right: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LogicalExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -161,7 +160,7 @@ pub struct LogicalExpression {
     pub right: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct UnaryExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -170,7 +169,7 @@ pub struct UnaryExpression {
     pub argument: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct UpdateExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -179,7 +178,7 @@ pub struct UpdateExpression {
     pub prefix: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConditionalExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -188,7 +187,7 @@ pub struct ConditionalExpression {
     pub alternate: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AssignmentExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -197,14 +196,14 @@ pub struct AssignmentExpression {
     pub right: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SequenceExpression {
     #[serde(flatten)]
     pub base: BaseNode,
     pub expressions: Vec<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ArrowFunctionExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -230,16 +229,11 @@ pub struct ArrowFunctionExpression {
         rename = "typeParameters"
     )]
     pub type_parameters: Option<RawNode>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "predicate",
-        deserialize_with = "crate::common::nullable_value"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "predicate")]
     pub predicate: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ArrowFunctionBody {
     BlockStatement(BlockStatement),
@@ -247,7 +241,7 @@ pub enum ArrowFunctionBody {
     Expression(Box<Expression>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FunctionExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -271,23 +265,18 @@ pub struct FunctionExpression {
         rename = "typeParameters"
     )]
     pub type_parameters: Option<RawNode>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "predicate",
-        deserialize_with = "crate::common::nullable_value"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "predicate")]
     pub predicate: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ObjectExpression {
     #[serde(flatten)]
     pub base: BaseNode,
     pub properties: Vec<ObjectExpressionProperty>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ObjectExpressionProperty {
     ObjectProperty(ObjectProperty),
@@ -295,7 +284,7 @@ pub enum ObjectExpressionProperty {
     SpreadElement(SpreadElement),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ObjectProperty {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -309,7 +298,7 @@ pub struct ObjectProperty {
     pub method: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ObjectMethod {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -339,16 +328,11 @@ pub struct ObjectMethod {
         rename = "typeParameters"
     )]
     pub type_parameters: Option<RawNode>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "predicate",
-        deserialize_with = "crate::common::nullable_value"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "predicate")]
     pub predicate: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ObjectMethodKind {
     Method,
@@ -356,14 +340,14 @@ pub enum ObjectMethodKind {
     Set,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ArrayExpression {
     #[serde(flatten)]
     pub base: BaseNode,
     pub elements: Vec<Option<Expression>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NewExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -378,13 +362,12 @@ pub struct NewExpression {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "crate::common::nullable_value",
         rename = "typeArguments"
     )]
     pub type_arguments: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TemplateLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -392,7 +375,7 @@ pub struct TemplateLiteral {
     pub expressions: Vec<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TaggedTemplateExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -406,14 +389,14 @@ pub struct TaggedTemplateExpression {
     pub type_parameters: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AwaitExpression {
     #[serde(flatten)]
     pub base: BaseNode,
     pub argument: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct YieldExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -422,14 +405,14 @@ pub struct YieldExpression {
     pub delegate: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SpreadElement {
     #[serde(flatten)]
     pub base: BaseNode,
     pub argument: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MetaProperty {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -437,7 +420,7 @@ pub struct MetaProperty {
     pub property: Identifier,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ClassExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -468,39 +451,39 @@ pub struct ClassExpression {
     pub type_parameters: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ClassBody {
     #[serde(flatten)]
     pub base: BaseNode,
     pub body: Vec<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PrivateName {
     #[serde(flatten)]
     pub base: BaseNode,
     pub id: Identifier,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Super {
     #[serde(flatten)]
     pub base: BaseNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Import {
     #[serde(flatten)]
     pub base: BaseNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ThisExpression {
     #[serde(flatten)]
     pub base: BaseNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ParenthesizedExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -508,7 +491,7 @@ pub struct ParenthesizedExpression {
 }
 
 // TypeScript expression nodes (pass-through with RawNode for type args)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSAsExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -517,7 +500,7 @@ pub struct TSAsExpression {
     pub type_annotation: RawNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSSatisfiesExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -526,14 +509,14 @@ pub struct TSSatisfiesExpression {
     pub type_annotation: RawNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSNonNullExpression {
     #[serde(flatten)]
     pub base: BaseNode,
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSTypeAssertion {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -542,7 +525,7 @@ pub struct TSTypeAssertion {
     pub type_annotation: RawNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSInstantiationExpression {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -552,7 +535,7 @@ pub struct TSInstantiationExpression {
 }
 
 // Flow expression nodes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeCastExpression {
     #[serde(flatten)]
     pub base: BaseNode,

@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum BinaryOperator {
     #[serde(rename = "+")]
     Add,
@@ -50,7 +50,7 @@ pub enum BinaryOperator {
     Pipeline,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum LogicalOperator {
     #[serde(rename = "||")]
     Or,
@@ -60,7 +60,7 @@ pub enum LogicalOperator {
     NullishCoalescing,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum UnaryOperator {
     #[serde(rename = "-")]
     Neg,
@@ -80,7 +80,7 @@ pub enum UnaryOperator {
     Throw,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum UpdateOperator {
     #[serde(rename = "++")]
     Increment,
@@ -88,7 +88,7 @@ pub enum UpdateOperator {
     Decrement,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum AssignmentOperator {
     #[serde(rename = "=")]
     Assign,

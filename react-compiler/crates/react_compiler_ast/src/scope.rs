@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use serde::Deserialize;
 use serde::Serialize;
 
 /// Identifies a scope in the scope table. Copy-able, used as an index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct ScopeId(pub u32);
 
 /// Identifies a binding (variable declaration) in the binding table. Copy-able, used as an index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct BindingId(pub u32);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScopeData {
     pub id: ScopeId,
@@ -23,7 +22,7 @@ pub struct ScopeData {
     pub bindings: HashMap<String, BindingId>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ScopeKind {
     Program,
@@ -36,7 +35,7 @@ pub enum ScopeKind {
     Catch,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BindingData {
     pub id: BindingId,
@@ -62,7 +61,7 @@ pub struct BindingData {
     pub import: Option<ImportBindingData>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BindingKind {
     Var,
@@ -79,7 +78,7 @@ pub enum BindingKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImportBindingData {
     /// The module specifier string (e.g., "react" in `import {useState} from 'react'`).
     pub source: String,
@@ -90,7 +89,7 @@ pub struct ImportBindingData {
     pub imported: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ImportBindingKind {
     Default,
@@ -100,7 +99,7 @@ pub enum ImportBindingKind {
 
 /// Complete scope information for a program. Stored separately from the AST
 /// and linked via position-based lookup maps.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScopeInfo {
     /// All scopes, indexed by ScopeId. scopes[id.0] gives the ScopeData for that scope.

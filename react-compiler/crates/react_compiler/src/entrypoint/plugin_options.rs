@@ -1,8 +1,8 @@
 use react_compiler_hir::environment_config::EnvironmentConfig;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Target configuration for the compiler
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
 pub enum CompilerTarget {
     /// Standard React version target
@@ -16,7 +16,7 @@ pub enum CompilerTarget {
 }
 
 /// Gating configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GatingConfig {
     pub source: String,
     #[serde(rename = "importSpecifierName")]
@@ -24,7 +24,7 @@ pub struct GatingConfig {
 }
 
 /// Dynamic gating configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DynamicGatingConfig {
     pub source: String,
 }
@@ -32,7 +32,7 @@ pub struct DynamicGatingConfig {
 /// Serializable plugin options, pre-resolved by the JS shim.
 /// JS-only values (sources function, logger, etc.) are resolved before
 /// being sent to Rust.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginOptions {
     // Pre-resolved by JS
@@ -42,11 +42,8 @@ pub struct PluginOptions {
     pub filename: Option<String>,
 
     // Pass-through options
-    #[serde(default = "default_compilation_mode")]
     pub compilation_mode: String,
-    #[serde(default = "default_panic_threshold")]
     pub panic_threshold: String,
-    #[serde(default = "default_target")]
     pub target: CompilerTarget,
     #[serde(default)]
     pub gating: Option<GatingConfig>,
@@ -58,7 +55,6 @@ pub struct PluginOptions {
     pub output_mode: Option<String>,
     #[serde(default)]
     pub eslint_suppression_rules: Option<Vec<String>>,
-    #[serde(default = "default_true")]
     pub flow_suppressions: bool,
     #[serde(default)]
     pub ignore_use_no_forget: bool,
@@ -79,22 +75,6 @@ pub struct PluginOptions {
     /// Only set to true when a logger with debugLogIRs is configured on the JS side.
     #[serde(default, rename = "__debug")]
     pub debug: bool,
-}
-
-fn default_compilation_mode() -> String {
-    "infer".to_string()
-}
-
-fn default_panic_threshold() -> String {
-    "none".to_string()
-}
-
-fn default_target() -> CompilerTarget {
-    CompilerTarget::Version("19".to_string())
-}
-
-fn default_true() -> bool {
-    true
 }
 
 /// Output mode for the compiler, derived from PluginOptions.

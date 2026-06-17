@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "crates/*",
-  "packages/babel-plugin-react-compiler-rust/native",
 ]
 resolver = "3"
 
@@ -19,7 +18,6 @@ react_compiler_diagnostics = { package = "forked_react_compiler_diagnostics", ve
 react_compiler_hir = { package = "forked_react_compiler_hir", version = "0.1.5", path = "crates/react_compiler_hir" }
 react_compiler_inference = { package = "forked_react_compiler_inference", version = "0.1.5", path = "crates/react_compiler_inference" }
 react_compiler_lowering = { package = "forked_react_compiler_lowering", version = "0.1.5", path = "crates/react_compiler_lowering" }
-react_compiler_napi = { package = "forked_react_compiler_napi", version = "0.1.5", path = "packages/babel-plugin-react-compiler-rust/native" }
 react_compiler_optimization = { package = "forked_react_compiler_optimization", version = "0.1.5", path = "crates/react_compiler_optimization" }
 react_compiler_reactive_scopes = { package = "forked_react_compiler_reactive_scopes", version = "0.1.5", path = "crates/react_compiler_reactive_scopes" }
 react_compiler_ssa = { package = "forked_react_compiler_ssa", version = "0.1.5", path = "crates/react_compiler_ssa" }
@@ -27,10 +25,8 @@ react_compiler_typeinference = { package = "forked_react_compiler_typeinference"
 react_compiler_utils = { package = "forked_react_compiler_utils", version = "0.1.5", path = "crates/react_compiler_utils" }
 react_compiler_validation = { package = "forked_react_compiler_validation", version = "0.1.5", path = "crates/react_compiler_validation" }
 
-# Sizes the shipped napi binary (index.node). Measured on arm64 macOS:
-# default release is 11.2MB; fat LTO + one codegen unit + stripping symbols
-# lands at 7.2MB with no runtime cost. Release builds get slower; debug
-# builds (snap --rust, the e2e harness) are unaffected.
+# The crates here are libraries consumed by oxc (which applies its own release
+# profile). This profile only affects local release builds in this workspace.
 [profile.release]
 lto = "fat"
 codegen-units = 1

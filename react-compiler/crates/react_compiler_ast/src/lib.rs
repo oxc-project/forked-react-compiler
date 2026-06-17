@@ -9,7 +9,7 @@ pub mod scope;
 pub mod statements;
 pub mod visitor;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::common::{BaseNode, Comment};
 use crate::expressions::Expression;
@@ -32,7 +32,7 @@ pub enum OriginalNode {
 }
 
 /// The root type returned by @babel/parser
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct File {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -43,7 +43,7 @@ pub struct File {
     pub errors: Vec<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Program {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -62,14 +62,14 @@ pub struct Program {
     pub source_file: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceType {
     Module,
     Script,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct InterpreterDirective {
     #[serde(flatten)]
     pub base: BaseNode,

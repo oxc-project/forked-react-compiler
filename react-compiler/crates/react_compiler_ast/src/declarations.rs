@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use serde::Serialize;
 
 use crate::common::BaseNode;
@@ -8,7 +7,7 @@ use crate::expressions::Identifier;
 use crate::literals::StringLiteral;
 
 /// Union of Declaration types that can appear in export declarations
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum Declaration {
     FunctionDeclaration(crate::statements::FunctionDeclaration),
@@ -26,7 +25,7 @@ pub enum Declaration {
 }
 
 /// The declaration/expression that can appear in `export default <decl>`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ExportDefaultDecl {
     FunctionDeclaration(crate::statements::FunctionDeclaration),
@@ -36,7 +35,7 @@ pub enum ExportDefaultDecl {
     Expression(Box<Expression>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImportDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -54,7 +53,7 @@ pub struct ImportDeclaration {
     pub attributes: Option<Vec<ImportAttribute>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ImportKind {
     Value,
@@ -62,7 +61,7 @@ pub enum ImportKind {
     Typeof,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ImportSpecifier {
     ImportSpecifier(ImportSpecifierData),
@@ -70,7 +69,7 @@ pub enum ImportSpecifier {
     ImportNamespaceSpecifier(ImportNamespaceSpecifierData),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImportSpecifierData {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -80,21 +79,21 @@ pub struct ImportSpecifierData {
     pub import_kind: Option<ImportKind>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImportDefaultSpecifierData {
     #[serde(flatten)]
     pub base: BaseNode,
     pub local: Identifier,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImportNamespaceSpecifierData {
     #[serde(flatten)]
     pub base: BaseNode,
     pub local: Identifier,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImportAttribute {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -103,14 +102,14 @@ pub struct ImportAttribute {
 }
 
 /// Identifier or StringLiteral used as module export names
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ModuleExportName {
     Identifier(Identifier),
     StringLiteral(StringLiteral),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportNamedDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -125,14 +124,14 @@ pub struct ExportNamedDeclaration {
     pub attributes: Option<Vec<ImportAttribute>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ExportKind {
     Value,
     Type,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ExportSpecifier {
     ExportSpecifier(ExportSpecifierData),
@@ -140,7 +139,7 @@ pub enum ExportSpecifier {
     ExportNamespaceSpecifier(ExportNamespaceSpecifierData),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportSpecifierData {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -154,21 +153,21 @@ pub struct ExportSpecifierData {
     pub export_kind: Option<ExportKind>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportDefaultSpecifierData {
     #[serde(flatten)]
     pub base: BaseNode,
     pub exported: Identifier,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportNamespaceSpecifierData {
     #[serde(flatten)]
     pub base: BaseNode,
     pub exported: ModuleExportName,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportDefaultDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -181,7 +180,7 @@ pub struct ExportDefaultDeclaration {
     pub export_kind: Option<ExportKind>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportAllDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -199,7 +198,7 @@ pub struct ExportAllDeclaration {
 }
 
 // TypeScript declarations (pass-through via RawNode for bodies)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSTypeAliasDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -216,7 +215,7 @@ pub struct TSTypeAliasDeclaration {
     pub declare: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSInterfaceDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -234,7 +233,7 @@ pub struct TSInterfaceDeclaration {
     pub declare: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSEnumDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -246,7 +245,7 @@ pub struct TSEnumDeclaration {
     pub is_const: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSModuleDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -258,7 +257,7 @@ pub struct TSModuleDeclaration {
     pub global: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TSDeclareFunction {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -285,7 +284,7 @@ pub struct TSDeclareFunction {
 }
 
 // Flow declarations (pass-through)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeAlias {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -295,7 +294,7 @@ pub struct TypeAlias {
     pub type_parameters: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OpaqueType {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -311,7 +310,7 @@ pub struct OpaqueType {
     pub type_parameters: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct InterfaceDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -331,27 +330,23 @@ pub struct InterfaceDeclaration {
     pub implements: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareVariable {
     #[serde(flatten)]
     pub base: BaseNode,
     pub id: Identifier,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareFunction {
     #[serde(flatten)]
     pub base: BaseNode,
     pub id: Identifier,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "crate::common::nullable_value"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub predicate: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareClass {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -371,7 +366,7 @@ pub struct DeclareClass {
     pub implements: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareModule {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -381,7 +376,7 @@ pub struct DeclareModule {
     pub kind: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareModuleExports {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -389,7 +384,7 @@ pub struct DeclareModuleExports {
     pub type_annotation: RawNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareExportDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -403,14 +398,14 @@ pub struct DeclareExportDeclaration {
     pub default: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareExportAllDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
     pub source: StringLiteral,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareInterface {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -430,7 +425,7 @@ pub struct DeclareInterface {
     pub implements: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareTypeAlias {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -444,7 +439,7 @@ pub struct DeclareTypeAlias {
     pub type_parameters: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeclareOpaqueType {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -461,7 +456,7 @@ pub struct DeclareOpaqueType {
     pub type_parameters: Option<RawNode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EnumDeclaration {
     #[serde(flatten)]
     pub base: BaseNode,
