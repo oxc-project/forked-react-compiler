@@ -1,0 +1,841 @@
+diff --git a/react-compiler/crates/react_compiler_ast/src/lib.rs b/react-compiler/crates/react_compiler_ast/src/lib.rs
+index 1dce3979b..302d8096c 100644
+--- a/react-compiler/crates/react_compiler_ast/src/lib.rs
++++ b/react-compiler/crates/react_compiler_ast/src/lib.rs
+@@ -12,8 +12,25 @@ pub mod visitor;
+ use serde::{Deserialize, Serialize};
+ 
+ use crate::common::{BaseNode, Comment};
++use crate::expressions::Expression;
++use crate::patterns::PatternLike;
+ use crate::statements::{Directive, Statement};
+ 
++/// An original source AST node preserved verbatim for re-emission when the
++/// compiler bails on a construct it does not model (`UnsupportedNode`).
++///
++/// Holding the typed node directly — rather than a `serde_json::Value` — lets
++/// lowering stash it and codegen restore it without round-tripping through
++/// serde, which is what kept the AST (de)serializers out of the generated
++/// binary. The variant records which syntactic position the node came from, so
++/// codegen can dispatch without re-parsing a `type` tag.
++#[derive(Debug, Clone)]
++pub enum OriginalNode {
++    Expression(Box<Expression>),
++    Statement(Box<Statement>),
++    Pattern(Box<PatternLike>),
++}
++
+ /// The root type returned by @babel/parser
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct File {
+diff --git a/react-compiler/crates/react_compiler_ast/src/patterns.rs b/react-compiler/crates/react_compiler_ast/src/patterns.rs
+index bfeef6eec..42e14515c 100644
+--- a/react-compiler/crates/react_compiler_ast/src/patterns.rs
++++ b/react-compiler/crates/react_compiler_ast/src/patterns.rs
+@@ -25,6 +25,36 @@ pub enum PatternLike {
+     TypeCastExpression(crate::expressions::TypeCastExpression),
+ }
+ 
++impl PatternLike {
++    /// Convert to the matching [`Expression`] variant when this pattern shares
++    /// a node `type` with `Expression` (i.e. it can appear in expression
++    /// position), otherwise `None`.
++    ///
++    /// Reproduces exactly the set that `serde_json::from_value::<Expression>`
++    /// of the same node would accept: the eight variants below wrap the same
++    /// inner types as their `Expression` counterparts (`AssignmentPattern`
++    /// included — `Expression` carries it for error-recovery positions), while
++    /// the pattern-only variants (`ObjectPattern`, `ArrayPattern`,
++    /// `RestElement`) are not expressions and yield `None`.
++    pub fn as_expression(&self) -> Option<Expression> {
++        match self {
++            PatternLike::Identifier(x) => Some(Expression::Identifier(x.clone())),
++            PatternLike::MemberExpression(x) => Some(Expression::MemberExpression(x.clone())),
++            PatternLike::AssignmentPattern(x) => Some(Expression::AssignmentPattern(x.clone())),
++            PatternLike::TSAsExpression(x) => Some(Expression::TSAsExpression(x.clone())),
++            PatternLike::TSSatisfiesExpression(x) => {
++                Some(Expression::TSSatisfiesExpression(x.clone()))
++            }
++            PatternLike::TSNonNullExpression(x) => Some(Expression::TSNonNullExpression(x.clone())),
++            PatternLike::TSTypeAssertion(x) => Some(Expression::TSTypeAssertion(x.clone())),
++            PatternLike::TypeCastExpression(x) => Some(Expression::TypeCastExpression(x.clone())),
++            PatternLike::ObjectPattern(_)
++            | PatternLike::ArrayPattern(_)
++            | PatternLike::RestElement(_) => None,
++        }
++    }
++}
++
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ObjectPattern {
+     #[serde(flatten)]
+@@ -106,3 +136,45 @@ pub struct RestElement {
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub decorators: Option<Vec<RawNode>>,
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::PatternLike;
++    use crate::expressions::Expression;
++
++    /// Variants shared with `Expression` coerce to the matching expression,
++    /// reproducing what a `from_value::<Expression>` of the node accepted.
++    #[test]
++    fn as_expression_converts_shared_variants() {
++        let ident: PatternLike =
++            serde_json::from_value(serde_json::json!({ "type": "Identifier", "name": "x" }))
++                .unwrap();
++        assert!(matches!(
++            ident.as_expression(),
++            Some(Expression::Identifier(_))
++        ));
++
++        // AssignmentPattern is shared: `Expression` carries it for
++        // error-recovery positions, so it must convert (not fall back).
++        let assign: PatternLike = serde_json::from_value(serde_json::json!({
++            "type": "AssignmentPattern",
++            "left": { "type": "Identifier", "name": "x" },
++            "right": { "type": "Identifier", "name": "y" }
++        }))
++        .unwrap();
++        assert!(matches!(
++            assign.as_expression(),
++            Some(Expression::AssignmentPattern(_))
++        ));
++    }
++
++    /// Pattern-only variants are not expressions and yield `None`.
++    #[test]
++    fn as_expression_rejects_pattern_only_variants() {
++        let object: PatternLike = serde_json::from_value(
++            serde_json::json!({ "type": "ObjectPattern", "properties": [] }),
++        )
++        .unwrap();
++        assert!(object.as_expression().is_none());
++    }
++}
+diff --git a/react-compiler/crates/react_compiler_hir/Cargo.toml b/react-compiler/crates/react_compiler_hir/Cargo.toml
+index 1f67d4c43..9617d4634 100644
+--- a/react-compiler/crates/react_compiler_hir/Cargo.toml
++++ b/react-compiler/crates/react_compiler_hir/Cargo.toml
+@@ -8,6 +8,7 @@ repository.workspace = true
+ publish = true
+ 
+ [dependencies]
++react_compiler_ast = { workspace = true }
+ react_compiler_diagnostics = { workspace = true }
+ indexmap = { version = "2", features = ["serde"] }
+ serde = { version = "1", features = ["derive"] }
+diff --git a/react-compiler/crates/react_compiler_hir/src/lib.rs b/react-compiler/crates/react_compiler_hir/src/lib.rs
+index fd4a34ae9..8e5c6f48e 100644
+--- a/react-compiler/crates/react_compiler_hir/src/lib.rs
++++ b/react-compiler/crates/react_compiler_hir/src/lib.rs
+@@ -782,8 +782,8 @@ pub enum InstructionValue {
+     },
+     UnsupportedNode {
+         node_type: Option<String>,
+-        /// The original AST node serialized as JSON, so codegen can emit it verbatim.
+-        original_node: Option<serde_json::Value>,
++        /// The original AST node, preserved verbatim so codegen can re-emit it.
++        original_node: Option<react_compiler_ast::OriginalNode>,
+         loc: Option<SourceLocation>,
+     },
+ }
+diff --git a/react-compiler/crates/react_compiler_lowering/src/build_hir.rs b/react-compiler/crates/react_compiler_lowering/src/build_hir.rs
+index c3d3bd687..96873a1f8 100644
+--- a/react-compiler/crates/react_compiler_lowering/src/build_hir.rs
++++ b/react-compiler/crates/react_compiler_lowering/src/build_hir.rs
+@@ -50,26 +50,37 @@ fn convert_opt_loc(
+     loc.as_ref().map(convert_loc)
+ }
+ 
+-/// Serialize an expression to a serde_json::Value for UnsupportedNode's original_node.
+-/// Returns None if serialization fails (should not happen for valid AST nodes).
+-/// This should ONLY be called on error/bail paths — never eagerly before deciding
+-/// to create an UnsupportedNode.
+-fn serialize_expression(
++/// Wrap an expression as an [`OriginalNode`] for `UnsupportedNode`'s
++/// `original_node`. Should ONLY be called on error/bail paths — never eagerly
++/// before deciding to create an `UnsupportedNode`.
++///
++/// [`OriginalNode`]: react_compiler_ast::OriginalNode
++fn original_expression(
+     expr: &react_compiler_ast::expressions::Expression,
+-) -> Option<serde_json::Value> {
+-    serde_json::to_value(expr).ok()
++) -> Option<react_compiler_ast::OriginalNode> {
++    Some(react_compiler_ast::OriginalNode::Expression(Box::new(
++        expr.clone(),
++    )))
+ }
+ 
+-/// Serialize a statement to a serde_json::Value for UnsupportedNode's original_node.
+-fn serialize_statement(
++/// Wrap a statement as an [`OriginalNode`](react_compiler_ast::OriginalNode)
++/// for `UnsupportedNode`'s `original_node`.
++fn original_statement(
+     stmt: &react_compiler_ast::statements::Statement,
+-) -> Option<serde_json::Value> {
+-    serde_json::to_value(stmt).ok()
++) -> Option<react_compiler_ast::OriginalNode> {
++    Some(react_compiler_ast::OriginalNode::Statement(Box::new(
++        stmt.clone(),
++    )))
+ }
+ 
+-/// Serialize a pattern to a serde_json::Value for UnsupportedNode's original_node.
+-fn serialize_pattern(pat: &react_compiler_ast::patterns::PatternLike) -> Option<serde_json::Value> {
+-    serde_json::to_value(pat).ok()
++/// Wrap a pattern as an [`OriginalNode`](react_compiler_ast::OriginalNode) for
++/// `UnsupportedNode`'s `original_node`.
++fn original_pattern(
++    pat: &react_compiler_ast::patterns::PatternLike,
++) -> Option<react_compiler_ast::OriginalNode> {
++    Some(react_compiler_ast::OriginalNode::Pattern(Box::new(
++        pat.clone(),
++    )))
+ }
+ 
+ fn pattern_like_loc(
+@@ -523,7 +534,7 @@ fn lower_member_expression_with_object(
+                     property: MemberProperty::Literal(PropertyLiteral::String("".to_string())),
+                     value: InstructionValue::UnsupportedNode {
+                         node_type: Some("OptionalMemberExpression".to_string()),
+-                        original_node: serialize_expression(
++                        original_node: original_expression(
+                             &react_compiler_ast::expressions::Expression::OptionalMemberExpression(
+                                 member.clone(),
+                             ),
+@@ -606,7 +617,7 @@ fn lower_member_expression_impl(
+                     property: MemberProperty::Literal(PropertyLiteral::String("".to_string())),
+                     value: InstructionValue::UnsupportedNode {
+                         node_type: Some("MemberExpression".to_string()),
+-                        original_node: serialize_expression(
++                        original_node: original_expression(
+                             &react_compiler_ast::expressions::Expression::MemberExpression(
+                                 member.clone(),
+                             ),
+@@ -723,7 +734,7 @@ fn lower_expression(
+                 })?;
+                 return Ok(InstructionValue::UnsupportedNode {
+                     node_type: Some("BinaryExpression".to_string()),
+-                    original_node: serialize_expression(expr),
++                    original_node: original_expression(expr),
+                     loc,
+                 });
+             }
+@@ -765,7 +776,7 @@ fn lower_expression(
+                                         })?;
+                                         Ok(InstructionValue::UnsupportedNode {
+                                             node_type: Some("UnaryExpression".to_string()),
+-                                            original_node: serialize_expression(expr),
++                                            original_node: original_expression(expr),
+                                             loc,
+                                         })
+                                     }
+@@ -791,7 +802,7 @@ fn lower_expression(
+                             })?;
+                             Ok(InstructionValue::UnsupportedNode {
+                                 node_type: Some("UnaryExpression".to_string()),
+-                                original_node: serialize_expression(expr),
++                                original_node: original_expression(expr),
+                                 loc,
+                             })
+                         }
+@@ -809,7 +820,7 @@ fn lower_expression(
+                     })?;
+                     Ok(InstructionValue::UnsupportedNode {
+                         node_type: Some("UnaryExpression".to_string()),
+-                        original_node: serialize_expression(expr),
++                        original_node: original_expression(expr),
+                         loc,
+                     })
+                 }
+@@ -1042,7 +1053,7 @@ fn lower_expression(
+                         })?;
+                         return Ok(InstructionValue::UnsupportedNode {
+                             node_type: Some("UpdateExpression".to_string()),
+-                            original_node: serialize_expression(expr),
++                            original_node: original_expression(expr),
+                             loc,
+                         });
+                     }
+@@ -1065,7 +1076,7 @@ fn lower_expression(
+                             })?;
+                             return Ok(InstructionValue::UnsupportedNode {
+                                 node_type: Some("UpdateExpression".to_string()),
+-                                original_node: serialize_expression(expr),
++                                original_node: original_expression(expr),
+                                 loc,
+                             });
+                         }
+@@ -1083,7 +1094,7 @@ fn lower_expression(
+                             })?;
+                             return Ok(InstructionValue::UnsupportedNode {
+                                 node_type: Some("UpdateExpression".to_string()),
+-                                original_node: serialize_expression(expr),
++                                original_node: original_expression(expr),
+                                 loc,
+                             });
+                         }
+@@ -1132,7 +1143,7 @@ fn lower_expression(
+                     })?;
+                     Ok(InstructionValue::UnsupportedNode {
+                         node_type: Some("UpdateExpression".to_string()),
+-                        original_node: serialize_expression(expr),
++                        original_node: original_expression(expr),
+                         loc,
+                     })
+                 }
+@@ -1260,7 +1271,7 @@ fn lower_expression(
+                                     })?;
+                                     return Ok(InstructionValue::UnsupportedNode {
+                                         node_type: Some("Identifier".to_string()),
+-                                        original_node: serialize_expression(
++                                        original_node: original_expression(
+                                             &Expression::AssignmentExpression(expr.clone()),
+                                         ),
+                                         loc: ident_loc,
+@@ -1446,7 +1457,7 @@ fn lower_expression(
+                         })?;
+                         return Ok(InstructionValue::UnsupportedNode {
+                             node_type: Some("AssignmentExpression".to_string()),
+-                            original_node: serialize_expression(&Expression::AssignmentExpression(
++                            original_node: original_expression(&Expression::AssignmentExpression(
+                                 expr.clone(),
+                             )),
+                             loc,
+@@ -1459,7 +1470,7 @@ fn lower_expression(
+                     None => {
+                         return Ok(InstructionValue::UnsupportedNode {
+                             node_type: Some("AssignmentExpression".to_string()),
+-                            original_node: serialize_expression(&Expression::AssignmentExpression(
++                            original_node: original_expression(&Expression::AssignmentExpression(
+                                 expr.clone(),
+                             )),
+                             loc,
+@@ -1600,7 +1611,7 @@ fn lower_expression(
+                         })?;
+                         Ok(InstructionValue::UnsupportedNode {
+                             node_type: Some("AssignmentExpression".to_string()),
+-                            original_node: serialize_expression(&Expression::AssignmentExpression(
++                            original_node: original_expression(&Expression::AssignmentExpression(
+                                 expr.clone(),
+                             )),
+                             loc,
+@@ -1623,7 +1634,7 @@ fn lower_expression(
+                 })?;
+                 return Ok(InstructionValue::UnsupportedNode {
+                     node_type: Some("SequenceExpression".to_string()),
+-                    original_node: serialize_expression(expr),
++                    original_node: original_expression(expr),
+                     loc,
+                 });
+             }
+@@ -1778,7 +1789,7 @@ fn lower_expression(
+                 })?;
+                 return Ok(InstructionValue::UnsupportedNode {
+                     node_type: Some("TaggedTemplateExpression".to_string()),
+-                    original_node: serialize_expression(expr),
++                    original_node: original_expression(expr),
+                     loc,
+                 });
+             }
+@@ -1798,7 +1809,7 @@ fn lower_expression(
+                 })?;
+                 return Ok(InstructionValue::UnsupportedNode {
+                     node_type: Some("TaggedTemplateExpression".to_string()),
+-                    original_node: serialize_expression(expr),
++                    original_node: original_expression(expr),
+                     loc,
+                 });
+             }
+@@ -1826,7 +1837,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("YieldExpression".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -1853,7 +1864,7 @@ fn lower_expression(
+                 })?;
+                 Ok(InstructionValue::UnsupportedNode {
+                     node_type: Some("MetaProperty".to_string()),
+-                    original_node: serialize_expression(expr),
++                    original_node: original_expression(expr),
+                     loc,
+                 })
+             }
+@@ -1870,7 +1881,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("ClassExpression".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -1885,7 +1896,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("PrivateName".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -1900,7 +1911,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("Super".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -1915,7 +1926,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("Import".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -1930,7 +1941,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("ThisExpression".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -2198,7 +2209,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("AssignmentPattern".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -2279,7 +2290,7 @@ fn lower_expression(
+             })?;
+             Ok(InstructionValue::UnsupportedNode {
+                 node_type: Some("BigIntLiteral".to_string()),
+-                original_node: serialize_expression(expr),
++                original_node: original_expression(expr),
+                 loc,
+             })
+         }
+@@ -4101,7 +4112,7 @@ fn lower_statement(
+                 builder,
+                 InstructionValue::UnsupportedNode {
+                     node_type: Some("WithStatement".to_string()),
+-                    original_node: serialize_statement(stmt),
++                    original_node: original_statement(stmt),
+                     loc,
+                 },
+             )?;
+@@ -4124,7 +4135,7 @@ fn lower_statement(
+                 builder,
+                 InstructionValue::UnsupportedNode {
+                     node_type: Some("ClassDeclaration".to_string()),
+-                    original_node: serialize_statement(stmt),
++                    original_node: original_statement(stmt),
+                     loc,
+                 },
+             )?;
+@@ -4159,7 +4170,7 @@ fn lower_statement(
+                 builder,
+                 InstructionValue::UnsupportedNode {
+                     node_type: Some(node_type_name.to_string()),
+-                    original_node: serialize_statement(stmt),
++                    original_node: original_statement(stmt),
+                     loc,
+                 },
+             )?;
+@@ -4167,10 +4178,9 @@ fn lower_statement(
+         // TypeScript/Flow declarations are type-only, skip them
+         Statement::TSEnumDeclaration(e) => {
+             let loc = convert_opt_loc(&e.base.loc);
+-            let original_node = serde_json::to_value(
++            let original_node = original_statement(
+                 &react_compiler_ast::statements::Statement::TSEnumDeclaration(e.clone()),
+-            )
+-            .ok();
++            );
+             lower_value_to_temporary(
+                 builder,
+                 InstructionValue::UnsupportedNode {
+@@ -4182,10 +4192,9 @@ fn lower_statement(
+         }
+         Statement::EnumDeclaration(e) => {
+             let loc = convert_opt_loc(&e.base.loc);
+-            let original_node = serde_json::to_value(
++            let original_node = original_statement(
+                 &react_compiler_ast::statements::Statement::EnumDeclaration(e.clone()),
+-            )
+-            .ok();
++            );
+             lower_value_to_temporary(
+                 builder,
+                 InstructionValue::UnsupportedNode {
+@@ -4231,7 +4240,9 @@ fn lower_statement(
+                 builder,
+                 InstructionValue::UnsupportedNode {
+                     node_type: Some(node_type),
+-                    original_node: Some(unknown.raw().parse_value()),
++                    original_node: original_statement(
++                        &react_compiler_ast::statements::Statement::Unknown(unknown.clone()),
++                    ),
+                     loc,
+                 },
+             )?;
+@@ -4514,7 +4525,7 @@ fn lower_assignment(
+                                 builder,
+                                 InstructionValue::UnsupportedNode {
+                                     node_type: Some("Identifier".to_string()),
+-                                    original_node: serialize_pattern(target),
++                                    original_node: original_pattern(target),
+                                     loc,
+                                 },
+                             )?;
+@@ -4602,7 +4613,7 @@ fn lower_assignment(
+                             builder,
+                             InstructionValue::UnsupportedNode {
+                                 node_type: Some("MemberExpression".to_string()),
+-                                original_node: serialize_pattern(target),
++                                original_node: original_pattern(target),
+                                 loc,
+                             },
+                         )?
+@@ -4624,7 +4635,7 @@ fn lower_assignment(
+                         builder,
+                         InstructionValue::UnsupportedNode {
+                             node_type: Some("MemberExpression".to_string()),
+-                            original_node: serialize_pattern(target),
++                            original_node: original_pattern(target),
+                             loc,
+                         },
+                     )?
+diff --git a/react-compiler/crates/react_compiler_lowering/tests/unknown_statement_lowering.rs b/react-compiler/crates/react_compiler_lowering/tests/unknown_statement_lowering.rs
+index 5901e79d2..e9588040d 100644
+--- a/react-compiler/crates/react_compiler_lowering/tests/unknown_statement_lowering.rs
++++ b/react-compiler/crates/react_compiler_lowering/tests/unknown_statement_lowering.rs
+@@ -1,5 +1,7 @@
++use react_compiler_ast::OriginalNode;
+ use react_compiler_ast::scope::ScopeInfo;
+ use react_compiler_ast::statements::FunctionDeclaration;
++use react_compiler_ast::statements::Statement;
+ use react_compiler_hir::InstructionValue;
+ use react_compiler_hir::environment::Environment;
+ use react_compiler_lowering::{FunctionNode, lower};
+@@ -87,5 +89,13 @@ fn unknown_statement_in_function_body_records_bailout() {
+         .expect("expected an UnsupportedNode instruction");
+ 
+     assert_eq!(unsupported.0.as_deref(), Some("TSFutureStatement"));
+-    assert_eq!(unsupported.1, Some(unknown_node));
++    match unsupported.1 {
++        Some(OriginalNode::Statement(stmt)) => match *stmt {
++            Statement::Unknown(unknown) => {
++                assert_eq!(unknown.node_type(), "TSFutureStatement");
++            }
++            other => panic!("expected Statement::Unknown, got {other:?}"),
++        },
++        other => panic!("expected OriginalNode::Statement, got {other:?}"),
++    }
+ }
+diff --git a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
+index ed2bc961e..c3e634215 100644
+--- a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
++++ b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
+@@ -13,6 +13,7 @@
+ use std::collections::HashMap;
+ use std::collections::HashSet;
+ 
++use react_compiler_ast::OriginalNode;
+ use react_compiler_ast::common::BaseNode;
+ use react_compiler_ast::common::Position as AstPosition;
+ use react_compiler_ast::common::RawNode;
+@@ -81,12 +82,10 @@ use react_compiler_ast::statements::SwitchCase;
+ use react_compiler_ast::statements::SwitchStatement;
+ use react_compiler_ast::statements::ThrowStatement;
+ use react_compiler_ast::statements::TryStatement;
+-use react_compiler_ast::statements::UnknownStatement;
+ use react_compiler_ast::statements::VariableDeclaration;
+ use react_compiler_ast::statements::VariableDeclarationKind;
+ use react_compiler_ast::statements::VariableDeclarator;
+ use react_compiler_ast::statements::WhileStatement;
+-use react_compiler_ast::statements::is_known_statement_type;
+ use react_compiler_diagnostics::CompilerDiagnostic;
+ use react_compiler_diagnostics::CompilerDiagnosticDetail;
+ use react_compiler_diagnostics::CompilerError;
+@@ -388,7 +387,9 @@ pub fn codegen_function(
+                                                     arguments: vec![Expression::StringLiteral(
+                                                         StringLiteral {
+                                                             base: BaseNode::typed("StringLiteral"),
+-                                                            value: MEMO_CACHE_SENTINEL.to_string().into(),
++                                                            value: MEMO_CACHE_SENTINEL
++                                                                .to_string()
++                                                                .into(),
+                                                         },
+                                                     )],
+                                                     type_parameters: None,
+@@ -1566,49 +1567,25 @@ enum UnsupportedOriginalNode {
+     ExpressionCodegen,
+ }
+ 
+-/// Discriminate an `UnsupportedNode`'s `original_node` by its `type` tag.
++/// Discriminate an `UnsupportedNode`'s `original_node` by which syntactic
++/// position lowering captured it from.
+ ///
+-/// Lowering serializes typed `Expression`/`Statement`/`PatternLike` bailout
+-/// nodes, plus the raw nodes of `Statement::Unknown` (whose tags are
+-/// unmodeled by construction). Dispatch accordingly:
+-///
+-/// - Modeled statement tag: parse the typed statement and emit it directly.
+-///   A parse failure here is a serialize/deserialize asymmetry, surfaced as
+-///   an invariant rather than degraded.
+-/// - Tag parseable as `Expression` or `PatternLike` (both enums are strict,
+-///   no catch-all): expression codegen. Patterns (e.g. `ObjectPattern`
+-///   destructuring targets) keep their existing placeholder fallback there.
+-/// - Anything else is an unmodeled tag, producible only by the
+-///   unknown-statement lowering bailout — i.e. it came from a statement
+-///   position — so preserve it verbatim as `Statement::Unknown`, matching
+-///   the TS codegen's `return node` for non-expressions.
+-fn codegen_unsupported_original_node(
+-    node: &serde_json::Value,
+-) -> Result<UnsupportedOriginalNode, CompilerError> {
+-    let tag = node.get("type").and_then(serde_json::Value::as_str);
+-    if tag.is_some_and(is_known_statement_type) {
+-        let stmt: Statement = serde_json::from_value(node.clone()).map_err(|e| {
+-            invariant_err(
+-                &format!("Failed to deserialize original AST node: {}", e),
+-                None,
+-            )
+-        })?;
+-        return Ok(UnsupportedOriginalNode::Statement(stmt));
+-    }
+-    if serde_json::from_value::<Expression>(node.clone()).is_ok()
+-        || serde_json::from_value::<PatternLike>(node.clone()).is_ok()
+-    {
+-        return Ok(UnsupportedOriginalNode::ExpressionCodegen);
++/// - [`OriginalNode::Statement`]: emit the statement directly. This covers
++///   modeled statements, type-only TS/Flow enum declarations, and the
++///   `Statement::Unknown` catch-all that the unknown-statement lowering
++///   bailout preserves verbatim — matching the TS codegen's `return node`
++///   for non-expressions.
++/// - [`OriginalNode::Expression`] / [`OriginalNode::Pattern`]: flow through
++///   the general expression codegen path so the instruction's lvalue
++///   temporary is bound. Patterns (e.g. `ObjectPattern` destructuring
++///   targets) keep their placeholder fallback there.
++fn codegen_unsupported_original_node(node: &OriginalNode) -> UnsupportedOriginalNode {
++    match node {
++        OriginalNode::Statement(stmt) => UnsupportedOriginalNode::Statement((**stmt).clone()),
++        OriginalNode::Expression(_) | OriginalNode::Pattern(_) => {
++            UnsupportedOriginalNode::ExpressionCodegen
++        }
+     }
+-    let unknown = UnknownStatement::from_raw(RawNode::from_value(node)).map_err(|e| {
+-        invariant_err(
+-            &format!("Failed to read unsupported original AST node: {}", e),
+-            None,
+-        )
+-    })?;
+-    Ok(UnsupportedOriginalNode::Statement(Statement::Unknown(
+-        unknown,
+-    )))
+ }
+ 
+ fn codegen_instruction_nullable(
+@@ -1645,7 +1622,7 @@ fn codegen_instruction_nullable(
+                 // lvalue temporaries (the regression the explicit dispatch
+                 // below prevents; TS codegen's equivalent check is
+                 // `if (!t.isExpression(node)) return node; value = node`).
+-                match codegen_unsupported_original_node(node)? {
++                match codegen_unsupported_original_node(node) {
+                     UnsupportedOriginalNode::Statement(stmt) => return Ok(Some(stmt)),
+                     UnsupportedOriginalNode::ExpressionCodegen => {
+                         // Expression (or pattern) node — fall through to the
+@@ -2593,32 +2570,23 @@ fn codegen_base_instruction_value(
+             node_type,
+             ..
+         } => {
+-            // Try to deserialize the original AST node from JSON (mirrors statement-level handler)
+-            match original_node {
+-                Some(node) => {
+-                    match serde_json::from_value::<Expression>(node.clone()) {
+-                        Ok(expr) => Ok(ExpressionOrJsxText::Expression(expr)),
+-                        Err(_) => {
+-                            // Not a valid expression — fall back to placeholder
+-                            Ok(ExpressionOrJsxText::Expression(Expression::Identifier(
+-                                make_identifier(&format!(
+-                                    "__unsupported_{}",
+-                                    node_type.as_deref().unwrap_or("unknown")
+-                                )),
+-                            )))
+-                        }
+-                    }
+-                }
+-                None => {
+-                    // No original node available — fall back to placeholder
+-                    Ok(ExpressionOrJsxText::Expression(Expression::Identifier(
+-                        make_identifier(&format!(
+-                            "__unsupported_{}",
+-                            node_type.as_deref().unwrap_or("unknown")
+-                        )),
+-                    )))
+-                }
++            // Emit the original node as an expression when it is one (mirrors
++            // the statement-level handler), otherwise fall back to a
++            // placeholder identifier. A pattern that shares a tag with
++            // `Expression` (e.g. a `MemberExpression` LVal) converts; pattern-
++            // only and statement nodes do not.
++            let expr = match original_node {
++                Some(OriginalNode::Expression(expr)) => Some((**expr).clone()),
++                Some(OriginalNode::Pattern(pat)) => pat.as_expression(),
++                Some(OriginalNode::Statement(_)) | None => None,
+             }
++            .unwrap_or_else(|| {
++                Expression::Identifier(make_identifier(&format!(
++                    "__unsupported_{}",
++                    node_type.as_deref().unwrap_or("unknown")
++                )))
++            });
++            Ok(ExpressionOrJsxText::Expression(expr))
+         }
+         InstructionValue::StartMemoize { .. }
+         | InstructionValue::FinishMemoize { .. }
+@@ -4240,82 +4208,90 @@ fn apply_renames_to_json_inner(
+ 
+ #[cfg(test)]
+ mod tests {
++    use react_compiler_ast::OriginalNode;
++    use react_compiler_ast::expressions::Expression;
++    use react_compiler_ast::patterns::PatternLike;
+     use react_compiler_ast::statements::Statement;
+     use serde_json::json;
+ 
+     use super::{UnsupportedOriginalNode, codegen_unsupported_original_node};
+ 
+-    /// A modeled statement tag parses typed and is emitted directly.
++    // Tests build the typed `OriginalNode` via serde (test-only — never linked
++    // into the compiler binary), mirroring the typed node lowering captures.
++    fn statement(value: serde_json::Value) -> OriginalNode {
++        OriginalNode::Statement(Box::new(
++            serde_json::from_value::<Statement>(value).unwrap(),
++        ))
++    }
++
++    /// A statement `original_node` is emitted directly at statement position.
+     #[test]
+-    fn unsupported_original_node_modeled_statement_tag_emits_statement() {
+-        let node = json!({ "type": "DebuggerStatement", "start": 0, "end": 9 });
+-        match codegen_unsupported_original_node(&node).unwrap() {
++    fn unsupported_original_node_statement_emits_statement() {
++        let node = statement(json!({ "type": "DebuggerStatement", "start": 0, "end": 9 }));
++        match codegen_unsupported_original_node(&node) {
+             UnsupportedOriginalNode::Statement(Statement::DebuggerStatement(_)) => {}
+             UnsupportedOriginalNode::Statement(other) => {
+                 panic!("expected typed DebuggerStatement, got {other:?}")
+             }
+             UnsupportedOriginalNode::ExpressionCodegen => {
+-                panic!("statement tag must not flow to expression codegen")
++                panic!("statement must not flow to expression codegen")
+             }
+         }
+     }
+ 
+-    /// A modeled statement tag with a malformed body is a serialize/
+-    /// deserialize asymmetry: error loudly, never degrade to `Unknown`.
+-    #[test]
+-    fn unsupported_original_node_malformed_statement_tag_errors() {
+-        let node = json!({ "type": "IfStatement", "consequent": { "type": "EmptyStatement" } });
+-        assert!(codegen_unsupported_original_node(&node).is_err());
+-    }
+-
+-    /// An expression tag flows to expression codegen, which binds the
+-    /// instruction's lvalue temporary. With the tolerant `Statement`
+-    /// deserializer, a plain try-parse-as-`Statement` would wrongly claim
+-    /// this node as `Statement::Unknown`.
++    /// An expression `original_node` flows to expression codegen, which binds
++    /// the instruction's lvalue temporary.
+     #[test]
+-    fn unsupported_original_node_expression_tag_flows_to_expression_codegen() {
+-        let node = json!({
+-            "type": "CallExpression",
+-            "callee": { "type": "Identifier", "name": "foo" },
+-            "arguments": []
+-        });
++    fn unsupported_original_node_expression_flows_to_expression_codegen() {
++        let node = OriginalNode::Expression(Box::new(
++            serde_json::from_value::<Expression>(json!({
++                "type": "CallExpression",
++                "callee": { "type": "Identifier", "name": "foo" },
++                "arguments": []
++            }))
++            .unwrap(),
++        ));
+         assert!(matches!(
+-            codegen_unsupported_original_node(&node).unwrap(),
++            codegen_unsupported_original_node(&node),
+             UnsupportedOriginalNode::ExpressionCodegen
+         ));
+     }
+ 
+-    /// A pattern tag (destructuring bailout target) also flows to expression
+-    /// codegen, preserving its placeholder fallback there.
++    /// A pattern `original_node` (destructuring bailout target) also flows to
++    /// expression codegen, preserving its placeholder fallback there.
+     #[test]
+-    fn unsupported_original_node_pattern_tag_flows_to_expression_codegen() {
+-        let node = json!({ "type": "ObjectPattern", "properties": [] });
++    fn unsupported_original_node_pattern_flows_to_expression_codegen() {
++        let node = OriginalNode::Pattern(Box::new(
++            serde_json::from_value::<PatternLike>(
++                json!({ "type": "ObjectPattern", "properties": [] }),
++            )
++            .unwrap(),
++        ));
+         assert!(matches!(
+-            codegen_unsupported_original_node(&node).unwrap(),
++            codegen_unsupported_original_node(&node),
+             UnsupportedOriginalNode::ExpressionCodegen
+         ));
+     }
+ 
+-    /// A genuinely unmodeled tag is producible only by the unknown-statement
+-    /// lowering bailout, so it is preserved verbatim at statement position.
++    /// An unmodeled statement is captured as `Statement::Unknown` by lowering
++    /// and preserved verbatim at statement position.
+     #[test]
+-    fn unsupported_original_node_unknown_tag_becomes_unknown_statement() {
+-        let node = json!({
++    fn unsupported_original_node_unknown_statement_is_preserved() {
++        let node = statement(json!({
+             "type": "TSImportEqualsDeclaration",
+             "start": 0,
+             "end": 39,
+             "id": { "type": "Identifier", "name": "lib" }
+-        });
+-        match codegen_unsupported_original_node(&node).unwrap() {
++        }));
++        match codegen_unsupported_original_node(&node) {
+             UnsupportedOriginalNode::Statement(Statement::Unknown(unknown)) => {
+                 assert_eq!(unknown.node_type(), "TSImportEqualsDeclaration");
+-                assert_eq!(unknown.raw().parse_value(), node);
+             }
+             UnsupportedOriginalNode::Statement(other) => {
+                 panic!("expected Statement::Unknown, got {other:?}")
+             }
+             UnsupportedOriginalNode::ExpressionCodegen => {
+-                panic!("unmodeled tag must not flow to expression codegen")
++                panic!("unmodeled statement must not flow to expression codegen")
+             }
+         }
+     }

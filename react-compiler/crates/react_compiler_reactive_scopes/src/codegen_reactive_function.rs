@@ -13,6 +13,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use react_compiler_ast::OriginalNode;
 use react_compiler_ast::common::BaseNode;
 use react_compiler_ast::common::Position as AstPosition;
 use react_compiler_ast::common::RawNode;
@@ -81,12 +82,10 @@ use react_compiler_ast::statements::SwitchCase;
 use react_compiler_ast::statements::SwitchStatement;
 use react_compiler_ast::statements::ThrowStatement;
 use react_compiler_ast::statements::TryStatement;
-use react_compiler_ast::statements::UnknownStatement;
 use react_compiler_ast::statements::VariableDeclaration;
 use react_compiler_ast::statements::VariableDeclarationKind;
 use react_compiler_ast::statements::VariableDeclarator;
 use react_compiler_ast::statements::WhileStatement;
-use react_compiler_ast::statements::is_known_statement_type;
 use react_compiler_diagnostics::CompilerDiagnostic;
 use react_compiler_diagnostics::CompilerDiagnosticDetail;
 use react_compiler_diagnostics::CompilerError;
@@ -388,7 +387,9 @@ pub fn codegen_function(
                                                     arguments: vec![Expression::StringLiteral(
                                                         StringLiteral {
                                                             base: BaseNode::typed("StringLiteral"),
-                                                            value: MEMO_CACHE_SENTINEL.to_string().into(),
+                                                            value: MEMO_CACHE_SENTINEL
+                                                                .to_string()
+                                                                .into(),
                                                         },
                                                     )],
                                                     type_parameters: None,
@@ -1566,49 +1567,25 @@ enum UnsupportedOriginalNode {
     ExpressionCodegen,
 }
 
-/// Discriminate an `UnsupportedNode`'s `original_node` by its `type` tag.
+/// Discriminate an `UnsupportedNode`'s `original_node` by which syntactic
+/// position lowering captured it from.
 ///
-/// Lowering serializes typed `Expression`/`Statement`/`PatternLike` bailout
-/// nodes, plus the raw nodes of `Statement::Unknown` (whose tags are
-/// unmodeled by construction). Dispatch accordingly:
-///
-/// - Modeled statement tag: parse the typed statement and emit it directly.
-///   A parse failure here is a serialize/deserialize asymmetry, surfaced as
-///   an invariant rather than degraded.
-/// - Tag parseable as `Expression` or `PatternLike` (both enums are strict,
-///   no catch-all): expression codegen. Patterns (e.g. `ObjectPattern`
-///   destructuring targets) keep their existing placeholder fallback there.
-/// - Anything else is an unmodeled tag, producible only by the
-///   unknown-statement lowering bailout — i.e. it came from a statement
-///   position — so preserve it verbatim as `Statement::Unknown`, matching
-///   the TS codegen's `return node` for non-expressions.
-fn codegen_unsupported_original_node(
-    node: &serde_json::Value,
-) -> Result<UnsupportedOriginalNode, CompilerError> {
-    let tag = node.get("type").and_then(serde_json::Value::as_str);
-    if tag.is_some_and(is_known_statement_type) {
-        let stmt: Statement = serde_json::from_value(node.clone()).map_err(|e| {
-            invariant_err(
-                &format!("Failed to deserialize original AST node: {}", e),
-                None,
-            )
-        })?;
-        return Ok(UnsupportedOriginalNode::Statement(stmt));
+/// - [`OriginalNode::Statement`]: emit the statement directly. This covers
+///   modeled statements, type-only TS/Flow enum declarations, and the
+///   `Statement::Unknown` catch-all that the unknown-statement lowering
+///   bailout preserves verbatim — matching the TS codegen's `return node`
+///   for non-expressions.
+/// - [`OriginalNode::Expression`] / [`OriginalNode::Pattern`]: flow through
+///   the general expression codegen path so the instruction's lvalue
+///   temporary is bound. Patterns (e.g. `ObjectPattern` destructuring
+///   targets) keep their placeholder fallback there.
+fn codegen_unsupported_original_node(node: &OriginalNode) -> UnsupportedOriginalNode {
+    match node {
+        OriginalNode::Statement(stmt) => UnsupportedOriginalNode::Statement((**stmt).clone()),
+        OriginalNode::Expression(_) | OriginalNode::Pattern(_) => {
+            UnsupportedOriginalNode::ExpressionCodegen
+        }
     }
-    if serde_json::from_value::<Expression>(node.clone()).is_ok()
-        || serde_json::from_value::<PatternLike>(node.clone()).is_ok()
-    {
-        return Ok(UnsupportedOriginalNode::ExpressionCodegen);
-    }
-    let unknown = UnknownStatement::from_raw(RawNode::from_value(node)).map_err(|e| {
-        invariant_err(
-            &format!("Failed to read unsupported original AST node: {}", e),
-            None,
-        )
-    })?;
-    Ok(UnsupportedOriginalNode::Statement(Statement::Unknown(
-        unknown,
-    )))
 }
 
 fn codegen_instruction_nullable(
@@ -1645,7 +1622,7 @@ fn codegen_instruction_nullable(
                 // lvalue temporaries (the regression the explicit dispatch
                 // below prevents; TS codegen's equivalent check is
                 // `if (!t.isExpression(node)) return node; value = node`).
-                match codegen_unsupported_original_node(node)? {
+                match codegen_unsupported_original_node(node) {
                     UnsupportedOriginalNode::Statement(stmt) => return Ok(Some(stmt)),
                     UnsupportedOriginalNode::ExpressionCodegen => {
                         // Expression (or pattern) node — fall through to the
@@ -2593,32 +2570,23 @@ fn codegen_base_instruction_value(
             node_type,
             ..
         } => {
-            // Try to deserialize the original AST node from JSON (mirrors statement-level handler)
-            match original_node {
-                Some(node) => {
-                    match serde_json::from_value::<Expression>(node.clone()) {
-                        Ok(expr) => Ok(ExpressionOrJsxText::Expression(expr)),
-                        Err(_) => {
-                            // Not a valid expression — fall back to placeholder
-                            Ok(ExpressionOrJsxText::Expression(Expression::Identifier(
-                                make_identifier(&format!(
-                                    "__unsupported_{}",
-                                    node_type.as_deref().unwrap_or("unknown")
-                                )),
-                            )))
-                        }
-                    }
-                }
-                None => {
-                    // No original node available — fall back to placeholder
-                    Ok(ExpressionOrJsxText::Expression(Expression::Identifier(
-                        make_identifier(&format!(
-                            "__unsupported_{}",
-                            node_type.as_deref().unwrap_or("unknown")
-                        )),
-                    )))
-                }
+            // Emit the original node as an expression when it is one (mirrors
+            // the statement-level handler), otherwise fall back to a
+            // placeholder identifier. A pattern that shares a tag with
+            // `Expression` (e.g. a `MemberExpression` LVal) converts; pattern-
+            // only and statement nodes do not.
+            let expr = match original_node {
+                Some(OriginalNode::Expression(expr)) => Some((**expr).clone()),
+                Some(OriginalNode::Pattern(pat)) => pat.as_expression(),
+                Some(OriginalNode::Statement(_)) | None => None,
             }
+            .unwrap_or_else(|| {
+                Expression::Identifier(make_identifier(&format!(
+                    "__unsupported_{}",
+                    node_type.as_deref().unwrap_or("unknown")
+                )))
+            });
+            Ok(ExpressionOrJsxText::Expression(expr))
         }
         InstructionValue::StartMemoize { .. }
         | InstructionValue::FinishMemoize { .. }
@@ -4240,82 +4208,90 @@ fn apply_renames_to_json_inner(
 
 #[cfg(test)]
 mod tests {
+    use react_compiler_ast::OriginalNode;
+    use react_compiler_ast::expressions::Expression;
+    use react_compiler_ast::patterns::PatternLike;
     use react_compiler_ast::statements::Statement;
     use serde_json::json;
 
     use super::{UnsupportedOriginalNode, codegen_unsupported_original_node};
 
-    /// A modeled statement tag parses typed and is emitted directly.
+    // Tests build the typed `OriginalNode` via serde (test-only — never linked
+    // into the compiler binary), mirroring the typed node lowering captures.
+    fn statement(value: serde_json::Value) -> OriginalNode {
+        OriginalNode::Statement(Box::new(
+            serde_json::from_value::<Statement>(value).unwrap(),
+        ))
+    }
+
+    /// A statement `original_node` is emitted directly at statement position.
     #[test]
-    fn unsupported_original_node_modeled_statement_tag_emits_statement() {
-        let node = json!({ "type": "DebuggerStatement", "start": 0, "end": 9 });
-        match codegen_unsupported_original_node(&node).unwrap() {
+    fn unsupported_original_node_statement_emits_statement() {
+        let node = statement(json!({ "type": "DebuggerStatement", "start": 0, "end": 9 }));
+        match codegen_unsupported_original_node(&node) {
             UnsupportedOriginalNode::Statement(Statement::DebuggerStatement(_)) => {}
             UnsupportedOriginalNode::Statement(other) => {
                 panic!("expected typed DebuggerStatement, got {other:?}")
             }
             UnsupportedOriginalNode::ExpressionCodegen => {
-                panic!("statement tag must not flow to expression codegen")
+                panic!("statement must not flow to expression codegen")
             }
         }
     }
 
-    /// A modeled statement tag with a malformed body is a serialize/
-    /// deserialize asymmetry: error loudly, never degrade to `Unknown`.
+    /// An expression `original_node` flows to expression codegen, which binds
+    /// the instruction's lvalue temporary.
     #[test]
-    fn unsupported_original_node_malformed_statement_tag_errors() {
-        let node = json!({ "type": "IfStatement", "consequent": { "type": "EmptyStatement" } });
-        assert!(codegen_unsupported_original_node(&node).is_err());
-    }
-
-    /// An expression tag flows to expression codegen, which binds the
-    /// instruction's lvalue temporary. With the tolerant `Statement`
-    /// deserializer, a plain try-parse-as-`Statement` would wrongly claim
-    /// this node as `Statement::Unknown`.
-    #[test]
-    fn unsupported_original_node_expression_tag_flows_to_expression_codegen() {
-        let node = json!({
-            "type": "CallExpression",
-            "callee": { "type": "Identifier", "name": "foo" },
-            "arguments": []
-        });
+    fn unsupported_original_node_expression_flows_to_expression_codegen() {
+        let node = OriginalNode::Expression(Box::new(
+            serde_json::from_value::<Expression>(json!({
+                "type": "CallExpression",
+                "callee": { "type": "Identifier", "name": "foo" },
+                "arguments": []
+            }))
+            .unwrap(),
+        ));
         assert!(matches!(
-            codegen_unsupported_original_node(&node).unwrap(),
+            codegen_unsupported_original_node(&node),
             UnsupportedOriginalNode::ExpressionCodegen
         ));
     }
 
-    /// A pattern tag (destructuring bailout target) also flows to expression
-    /// codegen, preserving its placeholder fallback there.
+    /// A pattern `original_node` (destructuring bailout target) also flows to
+    /// expression codegen, preserving its placeholder fallback there.
     #[test]
-    fn unsupported_original_node_pattern_tag_flows_to_expression_codegen() {
-        let node = json!({ "type": "ObjectPattern", "properties": [] });
+    fn unsupported_original_node_pattern_flows_to_expression_codegen() {
+        let node = OriginalNode::Pattern(Box::new(
+            serde_json::from_value::<PatternLike>(
+                json!({ "type": "ObjectPattern", "properties": [] }),
+            )
+            .unwrap(),
+        ));
         assert!(matches!(
-            codegen_unsupported_original_node(&node).unwrap(),
+            codegen_unsupported_original_node(&node),
             UnsupportedOriginalNode::ExpressionCodegen
         ));
     }
 
-    /// A genuinely unmodeled tag is producible only by the unknown-statement
-    /// lowering bailout, so it is preserved verbatim at statement position.
+    /// An unmodeled statement is captured as `Statement::Unknown` by lowering
+    /// and preserved verbatim at statement position.
     #[test]
-    fn unsupported_original_node_unknown_tag_becomes_unknown_statement() {
-        let node = json!({
+    fn unsupported_original_node_unknown_statement_is_preserved() {
+        let node = statement(json!({
             "type": "TSImportEqualsDeclaration",
             "start": 0,
             "end": 39,
             "id": { "type": "Identifier", "name": "lib" }
-        });
-        match codegen_unsupported_original_node(&node).unwrap() {
+        }));
+        match codegen_unsupported_original_node(&node) {
             UnsupportedOriginalNode::Statement(Statement::Unknown(unknown)) => {
                 assert_eq!(unknown.node_type(), "TSImportEqualsDeclaration");
-                assert_eq!(unknown.raw().parse_value(), node);
             }
             UnsupportedOriginalNode::Statement(other) => {
                 panic!("expected Statement::Unknown, got {other:?}")
             }
             UnsupportedOriginalNode::ExpressionCodegen => {
-                panic!("unmodeled tag must not flow to expression codegen")
+                panic!("unmodeled statement must not flow to expression codegen")
             }
         }
     }

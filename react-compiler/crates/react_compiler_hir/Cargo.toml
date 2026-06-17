@@ -8,6 +8,7 @@ repository.workspace = true
 publish = true
 
 [dependencies]
+react_compiler_ast = { workspace = true }
 react_compiler_diagnostics = { workspace = true }
 indexmap = { version = "2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }

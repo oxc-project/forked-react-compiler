@@ -1,5 +1,7 @@
+use react_compiler_ast::OriginalNode;
 use react_compiler_ast::scope::ScopeInfo;
 use react_compiler_ast::statements::FunctionDeclaration;
+use react_compiler_ast::statements::Statement;
 use react_compiler_hir::InstructionValue;
 use react_compiler_hir::environment::Environment;
 use react_compiler_lowering::{FunctionNode, lower};
@@ -87,5 +89,13 @@ fn unknown_statement_in_function_body_records_bailout() {
         .expect("expected an UnsupportedNode instruction");
 
     assert_eq!(unsupported.0.as_deref(), Some("TSFutureStatement"));
-    assert_eq!(unsupported.1, Some(unknown_node));
+    match unsupported.1 {
+        Some(OriginalNode::Statement(stmt)) => match *stmt {
+            Statement::Unknown(unknown) => {
+                assert_eq!(unknown.node_type(), "TSFutureStatement");
+            }
+            other => panic!("expected Statement::Unknown, got {other:?}"),
+        },
+        other => panic!("expected OriginalNode::Statement, got {other:?}"),
+    }
 }

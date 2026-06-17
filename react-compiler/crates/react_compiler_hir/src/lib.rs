@@ -782,8 +782,8 @@ pub enum InstructionValue {
     },
     UnsupportedNode {
         node_type: Option<String>,
-        /// The original AST node serialized as JSON, so codegen can emit it verbatim.
-        original_node: Option<serde_json::Value>,
+        /// The original AST node, preserved verbatim so codegen can re-emit it.
+        original_node: Option<react_compiler_ast::OriginalNode>,
         loc: Option<SourceLocation>,
     },
 }

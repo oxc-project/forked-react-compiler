@@ -12,7 +12,24 @@ pub mod visitor;
 use serde::{Deserialize, Serialize};
 
 use crate::common::{BaseNode, Comment};
+use crate::expressions::Expression;
+use crate::patterns::PatternLike;
 use crate::statements::{Directive, Statement};
+
+/// An original source AST node preserved verbatim for re-emission when the
+/// compiler bails on a construct it does not model (`UnsupportedNode`).
+///
+/// Holding the typed node directly — rather than a `serde_json::Value` — lets
+/// lowering stash it and codegen restore it without round-tripping through
+/// serde, which is what kept the AST (de)serializers out of the generated
+/// binary. The variant records which syntactic position the node came from, so
+/// codegen can dispatch without re-parsing a `type` tag.
+#[derive(Debug, Clone)]
+pub enum OriginalNode {
+    Expression(Box<Expression>),
+    Statement(Box<Statement>),
+    Pattern(Box<PatternLike>),
+}
 
 /// The root type returned by @babel/parser
 #[derive(Debug, Clone, Serialize, Deserialize)]
