@@ -8,6 +8,7 @@ repository.workspace = true
 publish = true
 
 [dependencies]
+react_compiler_diagnostics = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value", "unbounded_depth"] }
 serde-transcode = "1"
