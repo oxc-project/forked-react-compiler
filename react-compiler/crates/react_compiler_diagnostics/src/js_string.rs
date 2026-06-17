@@ -13,7 +13,6 @@
 
 use std::fmt;
 
-use serde::Deserialize;
 use serde::Serialize;
 
 /// Invariant: `Repr::Utf8` holds every well-formed value and `Repr::Wtf16`
@@ -244,13 +243,6 @@ impl fmt::Display for JsString {
 impl Serialize for JsString {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.to_marker_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for JsString {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        Ok(JsString::from_marker_string(&s))
     }
 }
 

@@ -9,14 +9,14 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::Effect;
 use crate::type_config::{TypeConfig, ValueKind};
 
 /// External function reference (source module + import name).
 /// Corresponds to TS `ExternalFunction`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalFunctionConfig {
     pub source: String,
@@ -25,7 +25,7 @@ pub struct ExternalFunctionConfig {
 
 /// Instrumentation configuration.
 /// Corresponds to TS `InstrumentationSchema`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstrumentationConfig {
     #[serde(rename = "fn")]
@@ -37,7 +37,7 @@ pub struct InstrumentationConfig {
 }
 
 /// Custom hook configuration, ported from TS `HookSchema`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HookConfig {
     pub effect_kind: Effect,
@@ -48,7 +48,7 @@ pub struct HookConfig {
     pub transitive_mixed_data: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ExhaustiveEffectDepsMode {
     #[serde(rename = "off")]
     Off,
@@ -66,16 +66,12 @@ impl Default for ExhaustiveEffectDepsMode {
     }
 }
 
-fn default_true() -> bool {
-    true
-}
-
 /// Compiler environment configuration. Contains feature flags and settings.
 ///
 /// Fields that would require passing JS functions across the JS/Rust boundary
 /// are omitted with TODO comments. The Rust port uses hardcoded defaults for
 /// these (e.g., `defaultModuleTypeProvider`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvironmentConfig {
     /// Custom hook type definitions, keyed by hook name.
@@ -97,25 +93,18 @@ pub struct EnvironmentConfig {
     #[serde(default)]
     pub enable_reset_cache_on_source_file_changes: Option<bool>,
 
-    #[serde(default = "default_true")]
     pub enable_preserve_existing_memoization_guarantees: bool,
-    #[serde(default = "default_true")]
     pub validate_preserve_existing_memoization_guarantees: bool,
-    #[serde(default = "default_true")]
     pub validate_exhaustive_memoization_dependencies: bool,
     #[serde(default)]
     pub validate_exhaustive_effect_dependencies: ExhaustiveEffectDepsMode,
 
     // TODO: flowTypeProvider — requires JS function callback.
-    #[serde(default = "default_true")]
     pub enable_optional_dependencies: bool,
     #[serde(default)]
     pub enable_name_anonymous_functions: bool,
-    #[serde(default = "default_true")]
     pub validate_hooks_usage: bool,
-    #[serde(default = "default_true")]
     pub validate_ref_access_during_render: bool,
-    #[serde(default = "default_true")]
     pub validate_no_set_state_in_render: bool,
     #[serde(default)]
     pub enable_use_keyed_state: bool,
@@ -142,9 +131,7 @@ pub struct EnvironmentConfig {
     pub validate_no_impure_functions_in_render: bool,
     #[serde(default)]
     pub validate_no_freezing_known_mutable_functions: bool,
-    #[serde(default = "default_true")]
     pub enable_assume_hooks_follow_rules_of_react: bool,
-    #[serde(default = "default_true")]
     pub enable_transitively_freeze_function_expressions: bool,
 
     /// Hook guard configuration. When set, wraps hook calls with dispatcher guard calls.
@@ -155,7 +142,6 @@ pub struct EnvironmentConfig {
     #[serde(default)]
     pub enable_emit_instrument_forget: Option<InstrumentationConfig>,
 
-    #[serde(default = "default_true")]
     pub enable_function_outlining: bool,
     #[serde(default)]
     pub enable_jsx_outlining: bool,
@@ -166,13 +152,10 @@ pub struct EnvironmentConfig {
     pub throw_unknown_exception_testonly: bool,
     #[serde(default)]
     pub enable_custom_type_definition_for_reanimated: bool,
-    #[serde(default = "default_true")]
     pub enable_treat_ref_like_identifiers_as_refs: bool,
     #[serde(default)]
     pub enable_treat_set_identifiers_as_state_setters: bool,
-    #[serde(default = "default_true")]
     pub validate_no_void_use_memo: bool,
-    #[serde(default = "default_true")]
     pub enable_allow_set_state_from_refs_in_effects: bool,
     #[serde(default)]
     pub enable_verbose_no_set_state_in_effect: bool,

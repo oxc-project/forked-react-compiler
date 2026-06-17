@@ -84,19 +84,6 @@ pub fn from_json_str_unbounded<'de, T: serde::Deserialize<'de>>(
     T::deserialize(&mut deserializer)
 }
 
-/// Custom deserializer that distinguishes "field absent" from "field: null".
-/// - JSON field absent → `None` (via `#[serde(default)]`)
-/// - JSON field `null` → `Some(RawNode("null"))`
-/// - JSON field with value → `Some(raw value)`
-///
-/// Use with `#[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "nullable_value")]`
-pub fn nullable_value<'de, D>(deserializer: D) -> Result<Option<RawNode>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    RawNode::deserialize(deserializer).map(Some)
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Position {
     pub line: u32,

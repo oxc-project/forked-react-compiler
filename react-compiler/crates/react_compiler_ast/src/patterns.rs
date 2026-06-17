@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::common::BaseNode;
 use crate::common::RawNode;
@@ -7,7 +7,7 @@ use crate::expressions::{Expression, Identifier};
 /// Covers assignment targets and patterns.
 /// In Babel, LVal includes Identifier, MemberExpression, ObjectPattern, ArrayPattern,
 /// RestElement, AssignmentPattern.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum PatternLike {
     Identifier(Identifier),
@@ -55,7 +55,7 @@ impl PatternLike {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ObjectPattern {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -70,14 +70,14 @@ pub struct ObjectPattern {
     pub decorators: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ObjectPatternProperty {
     ObjectProperty(ObjectPatternProp),
     RestElement(RestElement),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ObjectPatternProp {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -91,7 +91,7 @@ pub struct ObjectPatternProp {
     pub method: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ArrayPattern {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -106,7 +106,7 @@ pub struct ArrayPattern {
     pub decorators: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AssignmentPattern {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -122,7 +122,7 @@ pub struct AssignmentPattern {
     pub decorators: Option<Vec<RawNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RestElement {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -135,46 +135,4 @@ pub struct RestElement {
     pub type_annotation: Option<RawNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decorators: Option<Vec<RawNode>>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::PatternLike;
-    use crate::expressions::Expression;
-
-    /// Variants shared with `Expression` coerce to the matching expression,
-    /// reproducing what a `from_value::<Expression>` of the node accepted.
-    #[test]
-    fn as_expression_converts_shared_variants() {
-        let ident: PatternLike =
-            serde_json::from_value(serde_json::json!({ "type": "Identifier", "name": "x" }))
-                .unwrap();
-        assert!(matches!(
-            ident.as_expression(),
-            Some(Expression::Identifier(_))
-        ));
-
-        // AssignmentPattern is shared: `Expression` carries it for
-        // error-recovery positions, so it must convert (not fall back).
-        let assign: PatternLike = serde_json::from_value(serde_json::json!({
-            "type": "AssignmentPattern",
-            "left": { "type": "Identifier", "name": "x" },
-            "right": { "type": "Identifier", "name": "y" }
-        }))
-        .unwrap();
-        assert!(matches!(
-            assign.as_expression(),
-            Some(Expression::AssignmentPattern(_))
-        ));
-    }
-
-    /// Pattern-only variants are not expressions and yield `None`.
-    #[test]
-    fn as_expression_rejects_pattern_only_variants() {
-        let object: PatternLike = serde_json::from_value(
-            serde_json::json!({ "type": "ObjectPattern", "properties": [] }),
-        )
-        .unwrap();
-        assert!(object.as_expression().is_none());
-    }
 }

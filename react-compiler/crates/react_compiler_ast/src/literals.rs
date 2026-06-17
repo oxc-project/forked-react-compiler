@@ -1,9 +1,9 @@
 use react_compiler_diagnostics::JsString;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::common::BaseNode;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StringLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -11,7 +11,7 @@ pub struct StringLiteral {
     pub value: JsString,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NumericLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -35,34 +35,34 @@ impl NumericLiteral {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NumericLiteralExtra {
     pub raw: String,
     #[serde(default, rename = "rawValue")]
     pub raw_value: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BooleanLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
     pub value: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NullLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BigIntLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
     pub value: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RegExpLiteral {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -70,7 +70,7 @@ pub struct RegExpLiteral {
     pub flags: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TemplateElement {
     #[serde(flatten)]
     pub base: BaseNode,
@@ -78,7 +78,7 @@ pub struct TemplateElement {
     pub tail: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TemplateElementValue {
     pub raw: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]

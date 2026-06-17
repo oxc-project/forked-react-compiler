@@ -1039,7 +1039,7 @@ impl IdentifierName {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum Effect {
     #[serde(rename = "<unknown>")]
     Unknown,

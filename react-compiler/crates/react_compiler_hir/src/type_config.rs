@@ -13,7 +13,7 @@ use indexmap::IndexMap;
 use crate::Effect;
 
 /// Mirrors TS `ValueKind` enum for use in config.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ValueKind {
     Mutable,
@@ -26,7 +26,7 @@ pub enum ValueKind {
 }
 
 /// Mirrors TS `ValueReason` enum for use in config.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 pub enum ValueReason {
     #[serde(rename = "known-return-signature")]
     KnownReturnSignature,
@@ -58,7 +58,7 @@ pub enum ValueReason {
 // Aliasing effect config types (from TypeSchema.ts)
 // =============================================================================
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind")]
 pub enum AliasingEffectConfig {
     Freeze {
@@ -109,7 +109,7 @@ pub enum AliasingEffectConfig {
     },
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(untagged)]
 pub enum ApplyArgConfig {
     Place(String),
@@ -125,19 +125,19 @@ pub enum ApplyArgConfig {
 }
 
 /// Helper enum for tagged serde of `ApplyArgConfig::Spread`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum ApplyArgSpreadKind {
     Spread,
 }
 
 /// Helper enum for tagged serde of `ApplyArgConfig::Hole`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum ApplyArgHoleKind {
     Hole,
 }
 
 /// Aliasing signature config, the JSON-serializable form.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct AliasingSignatureConfig {
     pub receiver: String,
     pub params: Vec<String>,
@@ -151,7 +151,7 @@ pub struct AliasingSignatureConfig {
 // Type config (from TypeSchema.ts)
 // =============================================================================
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind")]
 pub enum TypeConfig {
     #[serde(rename = "object")]
@@ -164,12 +164,12 @@ pub enum TypeConfig {
     TypeReference(TypeReferenceConfig),
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct ObjectTypeConfig {
     pub properties: Option<IndexMap<String, TypeConfig>>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionTypeConfig {
     pub positional_params: Vec<Effect>,
@@ -185,7 +185,7 @@ pub struct FunctionTypeConfig {
     pub known_incompatible: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HookTypeConfig {
     pub positional_params: Option<Vec<Effect>>,
@@ -197,7 +197,7 @@ pub struct HookTypeConfig {
     pub known_incompatible: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum BuiltInTypeRef {
     Any,
     Ref,
@@ -206,7 +206,7 @@ pub enum BuiltInTypeRef {
     MixedReadonly,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct TypeReferenceConfig {
     pub name: BuiltInTypeRef,
 }
