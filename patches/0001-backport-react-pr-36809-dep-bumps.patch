@@ -1,0 +1,81 @@
+diff --git a/react-compiler/crates/react_compiler_ast/Cargo.toml b/react-compiler/crates/react_compiler_ast/Cargo.toml
+index 67f5c1642..3555e441d 100644
+--- a/react-compiler/crates/react_compiler_ast/Cargo.toml
++++ b/react-compiler/crates/react_compiler_ast/Cargo.toml
+@@ -15,7 +15,7 @@ indexmap = { version = "2", features = ["serde"] }
+ 
+ [dev-dependencies]
+ walkdir = "2"
+-similar = "2"
++similar = "3"
+ 
+ [lib]
+ name = "react_compiler_ast"
+diff --git a/react-compiler/crates/react_compiler_reactive_scopes/Cargo.toml b/react-compiler/crates/react_compiler_reactive_scopes/Cargo.toml
+index 31f2f6b9e..ef88e83e3 100644
+--- a/react-compiler/crates/react_compiler_reactive_scopes/Cargo.toml
++++ b/react-compiler/crates/react_compiler_reactive_scopes/Cargo.toml
+@@ -13,8 +13,8 @@ react_compiler_diagnostics = { workspace = true }
+ react_compiler_hir = { workspace = true }
+ indexmap = "2"
+ serde_json = "1"
+-sha2 = "0.10"
+-hmac = "0.12"
++sha2 = "0.11"
++hmac = "0.13"
+ 
+ [lib]
+ name = "react_compiler_reactive_scopes"
+diff --git a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
+index 078db1f7a..4fb4470a5 100644
+--- a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
++++ b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
+@@ -195,6 +195,7 @@ pub fn codegen_function(
+         if cx.env.config.enable_reset_cache_on_source_file_changes == Some(true) {
+             if let Some(ref code) = cx.env.code {
+                 use hmac::Hmac;
++                use hmac::KeyInit;
+                 use hmac::Mac;
+                 use sha2::Sha256;
+                 type HmacSha256 = Hmac<Sha256>;
+@@ -202,7 +203,12 @@ pub fn codegen_function(
+                 // Node's createHmac uses the code as the HMAC key and hashes empty data.
+                 let mac = HmacSha256::new_from_slice(code.as_bytes())
+                     .expect("HMAC can take key of any size");
+-                let hash = format!("{:x}", mac.finalize().into_bytes());
++                let hash = mac
++                    .finalize()
++                    .into_bytes()
++                    .iter()
++                    .map(|b| format!("{b:02x}"))
++                    .collect::<String>();
+                 let cache_index = cx.alloc_cache_index(); // Reserve slot 0 for the hash check
+                 Some((cache_index, hash))
+             } else {
+diff --git a/react-compiler/crates/react_compiler_ssa/Cargo.toml b/react-compiler/crates/react_compiler_ssa/Cargo.toml
+index c8e9db7e2..c27ebf125 100644
+--- a/react-compiler/crates/react_compiler_ssa/Cargo.toml
++++ b/react-compiler/crates/react_compiler_ssa/Cargo.toml
+@@ -10,7 +10,6 @@ publish = true
+ [dependencies]
+ react_compiler_diagnostics = { workspace = true }
+ react_compiler_hir = { workspace = true }
+-react_compiler_lowering = { workspace = true }
+ indexmap = "2"
+ 
+ [lib]
+diff --git a/react-compiler/packages/babel-plugin-react-compiler-rust/native/Cargo.toml b/react-compiler/packages/babel-plugin-react-compiler-rust/native/Cargo.toml
+index ab5a86e37..8b624a789 100644
+--- a/react-compiler/packages/babel-plugin-react-compiler-rust/native/Cargo.toml
++++ b/react-compiler/packages/babel-plugin-react-compiler-rust/native/Cargo.toml
+@@ -12,8 +12,8 @@ crate-type = ["cdylib"]
+ name = "react_compiler_napi"
+ 
+ [dependencies]
+-napi = { version = "2", features = ["napi4"] }
+-napi-derive = "2"
++napi = { version = "3", features = ["napi4"] }
++napi-derive = "3"
+ react_compiler = { workspace = true }
+ react_compiler_ast = { workspace = true }
+ serde = "1"

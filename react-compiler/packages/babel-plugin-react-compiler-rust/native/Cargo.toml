@@ -12,8 +12,8 @@ crate-type = ["cdylib"]
 name = "react_compiler_napi"
 
 [dependencies]
-napi = { version = "2", features = ["napi4"] }
-napi-derive = "2"
+napi = { version = "3", features = ["napi4"] }
+napi-derive = "3"
 react_compiler = { workspace = true }
 react_compiler_ast = { workspace = true }
 serde = "1"
