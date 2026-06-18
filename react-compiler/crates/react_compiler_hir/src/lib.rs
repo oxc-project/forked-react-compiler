@@ -724,7 +724,12 @@ pub enum InstructionValue {
     },
     TaggedTemplateExpression {
         tag: Place,
-        value: TemplateQuasi,
+        // Mirrors `TemplateLiteral`: `subexprs.len() == quasis.len() - 1`.
+        // Upstream's HIR models only a single quasi with no interpolation; the
+        // oxc port extends it to support `tag`-ed templates with `${...}`
+        // interpolations (a deliberate divergence from the TS reference).
+        quasis: Vec<TemplateQuasi>,
+        subexprs: Vec<Place>,
         loc: Option<SourceLocation>,
     },
     TemplateLiteral {

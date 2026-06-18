@@ -717,6 +717,11 @@ fn calls_hooks_or_creates_jsx_in_expr(expr: &Expression) -> bool {
             .map_or(false, |arg| calls_hooks_or_creates_jsx_in_expr(arg)),
         Expression::TaggedTemplateExpression(tagged) => {
             calls_hooks_or_creates_jsx_in_expr(&tagged.tag)
+                || tagged
+                    .quasi
+                    .expressions
+                    .iter()
+                    .any(|e| calls_hooks_or_creates_jsx_in_expr(e))
         }
         Expression::TemplateLiteral(tl) => tl
             .expressions

@@ -1,0 +1,293 @@
+diff --git a/react-compiler/crates/react_compiler/src/entrypoint/program.rs b/react-compiler/crates/react_compiler/src/entrypoint/program.rs
+index ee1a6f34c..4fc52ef80 100644
+--- a/react-compiler/crates/react_compiler/src/entrypoint/program.rs
++++ b/react-compiler/crates/react_compiler/src/entrypoint/program.rs
+@@ -717,6 +717,11 @@ fn calls_hooks_or_creates_jsx_in_expr(expr: &Expression) -> bool {
+             .map_or(false, |arg| calls_hooks_or_creates_jsx_in_expr(arg)),
+         Expression::TaggedTemplateExpression(tagged) => {
+             calls_hooks_or_creates_jsx_in_expr(&tagged.tag)
++                || tagged
++                    .quasi
++                    .expressions
++                    .iter()
++                    .any(|e| calls_hooks_or_creates_jsx_in_expr(e))
+         }
+         Expression::TemplateLiteral(tl) => tl
+             .expressions
+diff --git a/react-compiler/crates/react_compiler_hir/src/lib.rs b/react-compiler/crates/react_compiler_hir/src/lib.rs
+index f54363423..dbc27e1b7 100644
+--- a/react-compiler/crates/react_compiler_hir/src/lib.rs
++++ b/react-compiler/crates/react_compiler_hir/src/lib.rs
+@@ -724,7 +724,12 @@ pub enum InstructionValue {
+     },
+     TaggedTemplateExpression {
+         tag: Place,
+-        value: TemplateQuasi,
++        // Mirrors `TemplateLiteral`: `subexprs.len() == quasis.len() - 1`.
++        // Upstream's HIR models only a single quasi with no interpolation; the
++        // oxc port extends it to support `tag`-ed templates with `${...}`
++        // interpolations (a deliberate divergence from the TS reference).
++        quasis: Vec<TemplateQuasi>,
++        subexprs: Vec<Place>,
+         loc: Option<SourceLocation>,
+     },
+     TemplateLiteral {
+diff --git a/react-compiler/crates/react_compiler_hir/src/print.rs b/react-compiler/crates/react_compiler_hir/src/print.rs
+index 7855c1bd6..d65168e9e 100644
+--- a/react-compiler/crates/react_compiler_hir/src/print.rs
++++ b/react-compiler/crates/react_compiler_hir/src/print.rs
+@@ -1268,20 +1268,48 @@ impl<'a> PrintFormatter<'a> {
+             }
+             InstructionValue::TaggedTemplateExpression {
+                 tag,
+-                value: val,
++                quasis,
++                subexprs,
+                 loc,
+             } => {
+                 self.line("TaggedTemplateExpression {");
+                 self.indent();
+                 self.format_place_field("tag", tag);
+-                self.line(&format!("raw: {}", format_js_string(&val.raw)));
+-                self.line(&format!(
+-                    "cooked: {}",
+-                    match &val.cooked {
+-                        Some(c) => format_js_string(c),
+-                        None => "undefined".to_string(),
++                if subexprs.is_empty() && quasis.len() == 1 {
++                    // Non-interpolation case: preserve the upstream-compatible
++                    // single-quasi format so existing fixtures stay byte-identical.
++                    let val = &quasis[0];
++                    self.line(&format!("raw: {}", format_js_string(&val.raw)));
++                    self.line(&format!(
++                        "cooked: {}",
++                        match &val.cooked {
++                            Some(c) => format_js_string(c),
++                            None => "undefined".to_string(),
++                        }
++                    ));
++                } else {
++                    // Interpolation case (oxc divergence): print like TemplateLiteral.
++                    self.line("subexprs:");
++                    self.indent();
++                    for (i, sub) in subexprs.iter().enumerate() {
++                        self.format_place_field(&format!("[{}]", i), sub);
+                     }
+-                ));
++                    self.dedent();
++                    self.line("quasis:");
++                    self.indent();
++                    for (i, q) in quasis.iter().enumerate() {
++                        self.line(&format!(
++                            "[{}] {{ raw: {}, cooked: {} }}",
++                            i,
++                            format_js_string(&q.raw),
++                            match &q.cooked {
++                                Some(c) => format_js_string(c),
++                                None => "undefined".to_string(),
++                            }
++                        ));
++                    }
++                    self.dedent();
++                }
+                 self.line(&format!("loc: {}", format_loc(loc)));
+                 self.dedent();
+                 self.line("}");
+diff --git a/react-compiler/crates/react_compiler_hir/src/visitors.rs b/react-compiler/crates/react_compiler_hir/src/visitors.rs
+index 4ec134415..830d41074 100644
+--- a/react-compiler/crates/react_compiler_hir/src/visitors.rs
++++ b/react-compiler/crates/react_compiler_hir/src/visitors.rs
+@@ -320,8 +320,11 @@ pub fn each_instruction_value_operand_with_functions(
+                 result.push(ctx_place.clone());
+             }
+         }
+-        InstructionValue::TaggedTemplateExpression { tag, .. } => {
++        InstructionValue::TaggedTemplateExpression { tag, subexprs, .. } => {
+             result.push(tag.clone());
++            for subexpr in subexprs {
++                result.push(subexpr.clone());
++            }
+         }
+         InstructionValue::TypeCastExpression { value: val, .. } => {
+             result.push(val.clone());
+@@ -760,8 +763,9 @@ pub fn map_instruction_value_operands(
+             let func = &mut env.functions[lowered_func.func.0 as usize];
+             func.context = func.context.iter().map(|d| f(d.clone())).collect();
+         }
+-        InstructionValue::TaggedTemplateExpression { tag, .. } => {
++        InstructionValue::TaggedTemplateExpression { tag, subexprs, .. } => {
+             *tag = f(tag.clone());
++            *subexprs = subexprs.iter().map(|s| f(s.clone())).collect();
+         }
+         InstructionValue::TypeCastExpression { value: val, .. } => {
+             *val = f(val.clone());
+@@ -1597,8 +1601,11 @@ pub fn for_each_instruction_value_operand_mut(
+         InstructionValue::FunctionExpression { .. } | InstructionValue::ObjectMethod { .. } => {
+             // Context places require env access — callers handle separately.
+         }
+-        InstructionValue::TaggedTemplateExpression { tag, .. } => {
++        InstructionValue::TaggedTemplateExpression { tag, subexprs, .. } => {
+             f(tag);
++            for expr in subexprs.iter_mut() {
++                f(expr);
++            }
+         }
+         InstructionValue::TypeCastExpression { value: val, .. } => {
+             f(val);
+diff --git a/react-compiler/crates/react_compiler_lowering/src/build_hir.rs b/react-compiler/crates/react_compiler_lowering/src/build_hir.rs
+index eb9006276..a958f4783 100644
+--- a/react-compiler/crates/react_compiler_lowering/src/build_hir.rs
++++ b/react-compiler/crates/react_compiler_lowering/src/build_hir.rs
+@@ -1777,29 +1777,20 @@ fn lower_expression(
+         }
+         Expression::TaggedTemplateExpression(tagged) => {
+             let loc = convert_opt_loc(&tagged.base.loc);
+-            if !tagged.quasi.expressions.is_empty() {
+-                builder.record_error(CompilerErrorDetail {
+-                    category: ErrorCategory::Todo,
+-                    reason:
+-                        "(BuildHIR::lowerExpression) Handle tagged template with interpolations"
+-                            .to_string(),
+-                    description: None,
+-                    loc: loc.clone(),
+-                    suggestions: None,
+-                })?;
+-                return Ok(InstructionValue::UnsupportedNode {
+-                    node_type: Some("TaggedTemplateExpression".to_string()),
+-                    original_node: original_expression(expr),
+-                    loc,
+-                });
+-            }
+-            assert!(
+-                tagged.quasi.quasis.len() == 1,
+-                "there should be only one quasi as we don't support interpolations yet"
+-            );
+-            let quasi = &tagged.quasi.quasis[0];
+-            // Check if raw and cooked values differ (e.g., graphql tagged templates)
+-            if quasi.value.raw != quasi.value.cooked.clone().unwrap_or_default() {
++            // Upstream React Compiler bails on any interpolation here; the oxc port
++            // instead lowers the tag plus every quasi and every `${...}`
++            // subexpression (mirroring `TemplateLiteral`). This is a deliberate
++            // divergence from the TS reference.
++            //
++            // We still bail when any quasi's cooked value differs from its raw value
++            // (e.g. escape sequences or graphql templates), matching upstream's
++            // single-quasi behavior — the HIR only round-trips raw==cooked quasis.
++            if tagged
++                .quasi
++                .quasis
++                .iter()
++                .any(|q| q.value.raw != q.value.cooked.clone().unwrap_or_default())
++            {
+                 builder.record_error(CompilerErrorDetail {
+                     category: ErrorCategory::Todo,
+                     reason: "(BuildHIR::lowerExpression) Handle tagged template where cooked value is different from raw value".to_string(),
+@@ -1813,12 +1804,30 @@ fn lower_expression(
+                     loc,
+                 });
+             }
+-            let value = TemplateQuasi {
+-                raw: quasi.value.raw.clone(),
+-                cooked: quasi.value.cooked.clone(),
+-            };
++            // Evaluation order: the tag is evaluated first, then each interpolated
++            // subexpression left-to-right.
+             let tag = lower_expression_to_temporary(builder, &tagged.tag)?;
+-            Ok(InstructionValue::TaggedTemplateExpression { tag, value, loc })
++            let subexprs: Vec<Place> = tagged
++                .quasi
++                .expressions
++                .iter()
++                .map(|e| lower_expression_to_temporary(builder, e))
++                .collect::<Result<Vec<_>, _>>()?;
++            let quasis: Vec<TemplateQuasi> = tagged
++                .quasi
++                .quasis
++                .iter()
++                .map(|q| TemplateQuasi {
++                    raw: q.value.raw.clone(),
++                    cooked: q.value.cooked.clone(),
++                })
++                .collect();
++            Ok(InstructionValue::TaggedTemplateExpression {
++                tag,
++                quasis,
++                subexprs,
++                loc,
++            })
+         }
+         Expression::AwaitExpression(await_expr) => {
+             let loc = convert_opt_loc(&await_expr.base.loc);
+diff --git a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
+index 573940e51..f44551d03 100644
+--- a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
++++ b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
+@@ -2444,23 +2444,40 @@ fn codegen_base_instruction_value(
+             expr_type,
+             ..
+         } => codegen_function_expression(cx, name, name_hint, lowered_func, expr_type),
+-        InstructionValue::TaggedTemplateExpression { tag, value, .. } => {
++        InstructionValue::TaggedTemplateExpression {
++            tag,
++            quasis,
++            subexprs,
++            ..
++        } => {
+             let tag_expr = codegen_place_to_expression(cx, tag)?;
++            // Mirrors the TemplateLiteral arm: rebuild the full quasi/expression
++            // template. For the non-interpolation case (single tail quasi, no
++            // subexprs) this reproduces the upstream single-element output exactly.
++            let exprs: Vec<Expression> = subexprs
++                .iter()
++                .map(|p| codegen_place_to_expression(cx, p))
++                .collect::<Result<_, _>>()?;
++            let template_elems: Vec<TemplateElement> = quasis
++                .iter()
++                .enumerate()
++                .map(|(i, q)| TemplateElement {
++                    base: BaseNode::typed("TemplateElement"),
++                    value: TemplateElementValue {
++                        raw: q.raw.clone(),
++                        cooked: q.cooked.clone(),
++                    },
++                    tail: i == quasis.len() - 1,
++                })
++                .collect();
+             Ok(ExpressionOrJsxText::Expression(
+                 Expression::TaggedTemplateExpression(ast_expr::TaggedTemplateExpression {
+                     base: BaseNode::typed("TaggedTemplateExpression"),
+                     tag: Box::new(tag_expr),
+                     quasi: ast_expr::TemplateLiteral {
+                         base: BaseNode::typed("TemplateLiteral"),
+-                        quasis: vec![TemplateElement {
+-                            base: BaseNode::typed("TemplateElement"),
+-                            value: TemplateElementValue {
+-                                raw: value.raw.clone(),
+-                                cooked: value.cooked.clone(),
+-                            },
+-                            tail: true,
+-                        }],
+-                        expressions: Vec::new(),
++                        quasis: template_elems,
++                        expressions: exprs,
+                     },
+                     type_parameters: None,
+                 }),
+diff --git a/react-compiler/crates/react_compiler_typeinference/src/infer_types.rs b/react-compiler/crates/react_compiler_typeinference/src/infer_types.rs
+index c5739c7cd..c9c13ce3b 100644
+--- a/react-compiler/crates/react_compiler_typeinference/src/infer_types.rs
++++ b/react-compiler/crates/react_compiler_typeinference/src/infer_types.rs
+@@ -1141,9 +1141,11 @@ fn apply_instruction_operands(
+                 }
+             }
+         }
+-        InstructionValue::TaggedTemplateExpression { tag, .. } => {
++        InstructionValue::TaggedTemplateExpression { tag, subexprs, .. } => {
+             resolve_identifier(tag.identifier, identifiers, types, unifier);
+-            // The template quasi's subexpressions are not separate operands in this HIR
++            for sub in subexprs {
++                resolve_identifier(sub.identifier, identifiers, types, unifier);
++            }
+         }
+         InstructionValue::PropertyLoad { object, .. } => {
+             resolve_identifier(object.identifier, identifiers, types, unifier);

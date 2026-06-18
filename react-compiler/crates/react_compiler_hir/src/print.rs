@@ -1268,20 +1268,48 @@ impl<'a> PrintFormatter<'a> {
             }
             InstructionValue::TaggedTemplateExpression {
                 tag,
-                value: val,
+                quasis,
+                subexprs,
                 loc,
             } => {
                 self.line("TaggedTemplateExpression {");
                 self.indent();
                 self.format_place_field("tag", tag);
-                self.line(&format!("raw: {}", format_js_string(&val.raw)));
-                self.line(&format!(
-                    "cooked: {}",
-                    match &val.cooked {
-                        Some(c) => format_js_string(c),
-                        None => "undefined".to_string(),
+                if subexprs.is_empty() && quasis.len() == 1 {
+                    // Non-interpolation case: preserve the upstream-compatible
+                    // single-quasi format so existing fixtures stay byte-identical.
+                    let val = &quasis[0];
+                    self.line(&format!("raw: {}", format_js_string(&val.raw)));
+                    self.line(&format!(
+                        "cooked: {}",
+                        match &val.cooked {
+                            Some(c) => format_js_string(c),
+                            None => "undefined".to_string(),
+                        }
+                    ));
+                } else {
+                    // Interpolation case (oxc divergence): print like TemplateLiteral.
+                    self.line("subexprs:");
+                    self.indent();
+                    for (i, sub) in subexprs.iter().enumerate() {
+                        self.format_place_field(&format!("[{}]", i), sub);
                     }
-                ));
+                    self.dedent();
+                    self.line("quasis:");
+                    self.indent();
+                    for (i, q) in quasis.iter().enumerate() {
+                        self.line(&format!(
+                            "[{}] {{ raw: {}, cooked: {} }}",
+                            i,
+                            format_js_string(&q.raw),
+                            match &q.cooked {
+                                Some(c) => format_js_string(c),
+                                None => "undefined".to_string(),
+                            }
+                        ));
+                    }
+                    self.dedent();
+                }
                 self.line(&format!("loc: {}", format_loc(loc)));
                 self.dedent();
                 self.line("}");
