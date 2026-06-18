@@ -1777,29 +1777,20 @@ fn lower_expression(
         }
         Expression::TaggedTemplateExpression(tagged) => {
             let loc = convert_opt_loc(&tagged.base.loc);
-            if !tagged.quasi.expressions.is_empty() {
-                builder.record_error(CompilerErrorDetail {
-                    category: ErrorCategory::Todo,
-                    reason:
-                        "(BuildHIR::lowerExpression) Handle tagged template with interpolations"
-                            .to_string(),
-                    description: None,
-                    loc: loc.clone(),
-                    suggestions: None,
-                })?;
-                return Ok(InstructionValue::UnsupportedNode {
-                    node_type: Some("TaggedTemplateExpression".to_string()),
-                    original_node: original_expression(expr),
-                    loc,
-                });
-            }
-            assert!(
-                tagged.quasi.quasis.len() == 1,
-                "there should be only one quasi as we don't support interpolations yet"
-            );
-            let quasi = &tagged.quasi.quasis[0];
-            // Check if raw and cooked values differ (e.g., graphql tagged templates)
-            if quasi.value.raw != quasi.value.cooked.clone().unwrap_or_default() {
+            // Upstream React Compiler bails on any interpolation here; the oxc port
+            // instead lowers the tag plus every quasi and every `${...}`
+            // subexpression (mirroring `TemplateLiteral`). This is a deliberate
+            // divergence from the TS reference.
+            //
+            // We still bail when any quasi's cooked value differs from its raw value
+            // (e.g. escape sequences or graphql templates), matching upstream's
+            // single-quasi behavior — the HIR only round-trips raw==cooked quasis.
+            if tagged
+                .quasi
+                .quasis
+                .iter()
+                .any(|q| q.value.raw != q.value.cooked.clone().unwrap_or_default())
+            {
                 builder.record_error(CompilerErrorDetail {
                     category: ErrorCategory::Todo,
                     reason: "(BuildHIR::lowerExpression) Handle tagged template where cooked value is different from raw value".to_string(),
@@ -1813,12 +1804,30 @@ fn lower_expression(
                     loc,
                 });
             }
-            let value = TemplateQuasi {
-                raw: quasi.value.raw.clone(),
-                cooked: quasi.value.cooked.clone(),
-            };
+            // Evaluation order: the tag is evaluated first, then each interpolated
+            // subexpression left-to-right.
             let tag = lower_expression_to_temporary(builder, &tagged.tag)?;
-            Ok(InstructionValue::TaggedTemplateExpression { tag, value, loc })
+            let subexprs: Vec<Place> = tagged
+                .quasi
+                .expressions
+                .iter()
+                .map(|e| lower_expression_to_temporary(builder, e))
+                .collect::<Result<Vec<_>, _>>()?;
+            let quasis: Vec<TemplateQuasi> = tagged
+                .quasi
+                .quasis
+                .iter()
+                .map(|q| TemplateQuasi {
+                    raw: q.value.raw.clone(),
+                    cooked: q.value.cooked.clone(),
+                })
+                .collect();
+            Ok(InstructionValue::TaggedTemplateExpression {
+                tag,
+                quasis,
+                subexprs,
+                loc,
+            })
         }
         Expression::AwaitExpression(await_expr) => {
             let loc = convert_opt_loc(&await_expr.base.loc);
