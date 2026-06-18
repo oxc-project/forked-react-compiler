@@ -786,7 +786,19 @@ pub fn compile_fn(
     let mut reactive_fn = react_compiler_reactive_scopes::build_reactive_function(&hir, &env)?;
     context.timing.stop();
 
-    context.debug_reactive("BuildReactiveFunction", &reactive_fn, &env);
+    let hir_formatter = |fmt: &mut react_compiler_hir::print::PrintFormatter,
+                         func: &react_compiler_hir::HirFunction| {
+        debug_print::format_hir_function_into(fmt, func);
+    };
+
+    if context.debug_enabled {
+        context.timing.start("debug_print:BuildReactiveFunction");
+        let debug_reactive = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("BuildReactiveFunction", debug_reactive));
+        context.timing.stop();
+    }
 
     context.timing.start("AssertWellFormedBreakTargets");
     react_compiler_reactive_scopes::assert_well_formed_break_targets(&reactive_fn, &env);
@@ -802,7 +814,17 @@ pub fn compile_fn(
     react_compiler_reactive_scopes::prune_unused_labels(&mut reactive_fn, &env)?;
     context.timing.stop();
 
-    context.debug_reactive("PruneUnusedLabels", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PruneUnusedLabels");
+        let debug_prune_labels_reactive = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "PruneUnusedLabels",
+            debug_prune_labels_reactive,
+        ));
+        context.timing.stop();
+    }
 
     context.timing.start("AssertScopeInstructionsWithinScopes");
     react_compiler_reactive_scopes::assert_scope_instructions_within_scopes(&reactive_fn, &env)?;
@@ -818,19 +840,48 @@ pub fn compile_fn(
     react_compiler_reactive_scopes::prune_non_escaping_scopes(&mut reactive_fn, &mut env)?;
     context.timing.stop();
 
-    context.debug_reactive("PruneNonEscapingScopes", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PruneNonEscapingScopes");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("PruneNonEscapingScopes", debug));
+        context.timing.stop();
+    }
 
     context.timing.start("PruneNonReactiveDependencies");
     react_compiler_reactive_scopes::prune_non_reactive_dependencies(&mut reactive_fn, &mut env);
     context.timing.stop();
 
-    context.debug_reactive("PruneNonReactiveDependencies", &reactive_fn, &env);
+    if context.debug_enabled {
+        context
+            .timing
+            .start("debug_print:PruneNonReactiveDependencies");
+        let debug_prune_non_reactive = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "PruneNonReactiveDependencies",
+            debug_prune_non_reactive,
+        ));
+        context.timing.stop();
+    }
 
     context.timing.start("PruneUnusedScopes");
     react_compiler_reactive_scopes::prune_unused_scopes(&mut reactive_fn, &env)?;
     context.timing.stop();
 
-    context.debug_reactive("PruneUnusedScopes", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PruneUnusedScopes");
+        let debug_prune_unused_scopes = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "PruneUnusedScopes",
+            debug_prune_unused_scopes,
+        ));
+        context.timing.stop();
+    }
 
     context
         .timing
@@ -841,35 +892,79 @@ pub fn compile_fn(
     )?;
     context.timing.stop();
 
-    context.debug_reactive(
-        "MergeReactiveScopesThatInvalidateTogether",
-        &reactive_fn,
-        &env,
-    );
+    if context.debug_enabled {
+        context
+            .timing
+            .start("debug_print:MergeReactiveScopesThatInvalidateTogether");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "MergeReactiveScopesThatInvalidateTogether",
+            debug,
+        ));
+        context.timing.stop();
+    }
 
     context.timing.start("PruneAlwaysInvalidatingScopes");
     react_compiler_reactive_scopes::prune_always_invalidating_scopes(&mut reactive_fn, &env)?;
     context.timing.stop();
 
-    context.debug_reactive("PruneAlwaysInvalidatingScopes", &reactive_fn, &env);
+    if context.debug_enabled {
+        context
+            .timing
+            .start("debug_print:PruneAlwaysInvalidatingScopes");
+        let debug_prune_always_inv = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "PruneAlwaysInvalidatingScopes",
+            debug_prune_always_inv,
+        ));
+        context.timing.stop();
+    }
 
     context.timing.start("PropagateEarlyReturns");
     react_compiler_reactive_scopes::propagate_early_returns(&mut reactive_fn, &mut env);
     context.timing.stop();
 
-    context.debug_reactive("PropagateEarlyReturns", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PropagateEarlyReturns");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("PropagateEarlyReturns", debug));
+        context.timing.stop();
+    }
 
     context.timing.start("PruneUnusedLValues");
     react_compiler_reactive_scopes::prune_unused_lvalues(&mut reactive_fn, &env);
     context.timing.stop();
 
-    context.debug_reactive("PruneUnusedLValues", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PruneUnusedLValues");
+        let debug_prune_lvalues = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "PruneUnusedLValues",
+            debug_prune_lvalues,
+        ));
+        context.timing.stop();
+    }
 
     context.timing.start("PromoteUsedTemporaries");
     react_compiler_reactive_scopes::promote_used_temporaries(&mut reactive_fn, &mut env);
     context.timing.stop();
 
-    context.debug_reactive("PromoteUsedTemporaries", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PromoteUsedTemporaries");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("PromoteUsedTemporaries", debug));
+        context.timing.stop();
+    }
 
     context
         .timing
@@ -880,17 +975,32 @@ pub fn compile_fn(
     )?;
     context.timing.stop();
 
-    context.debug_reactive(
-        "ExtractScopeDeclarationsFromDestructuring",
-        &reactive_fn,
-        &env,
-    );
+    if context.debug_enabled {
+        context
+            .timing
+            .start("debug_print:ExtractScopeDeclarationsFromDestructuring");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new(
+            "ExtractScopeDeclarationsFromDestructuring",
+            debug,
+        ));
+        context.timing.stop();
+    }
 
     context.timing.start("StabilizeBlockIds");
     react_compiler_reactive_scopes::stabilize_block_ids(&mut reactive_fn, &mut env);
     context.timing.stop();
 
-    context.debug_reactive("StabilizeBlockIds", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:StabilizeBlockIds");
+        let debug_stabilize = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("StabilizeBlockIds", debug_stabilize));
+        context.timing.stop();
+    }
 
     context.timing.start("RenameVariables");
     let unique_identifiers =
@@ -901,13 +1011,27 @@ pub fn compile_fn(
         context.add_new_reference(name.clone());
     }
 
-    context.debug_reactive("RenameVariables", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:RenameVariables");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("RenameVariables", debug));
+        context.timing.stop();
+    }
 
     context.timing.start("PruneHoistedContexts");
     react_compiler_reactive_scopes::prune_hoisted_contexts(&mut reactive_fn, &mut env)?;
     context.timing.stop();
 
-    context.debug_reactive("PruneHoistedContexts", &reactive_fn, &env);
+    if context.debug_enabled {
+        context.timing.start("debug_print:PruneHoistedContexts");
+        let debug = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
+            &reactive_fn, &env, Some(&hir_formatter),
+        );
+        context.log_debug(DebugLogEntry::new("PruneHoistedContexts", debug));
+        context.timing.stop();
+    }
 
     if env.config.enable_preserve_existing_memoization_guarantees
         || env.config.validate_preserve_existing_memoization_guarantees

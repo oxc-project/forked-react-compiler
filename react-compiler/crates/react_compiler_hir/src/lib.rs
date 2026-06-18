@@ -4,9 +4,6 @@ pub mod environment;
 pub mod environment_config;
 pub mod globals;
 pub mod object_shape;
-/// Debug-only: `PrintFormatter` powers `yarn snap -d` output and is compiled out
-/// of release builds (see `react_compiler::debug_print`).
-#[cfg(debug_assertions)]
 pub mod print;
 pub mod reactive;
 pub mod type_config;
