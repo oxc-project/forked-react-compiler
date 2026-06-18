@@ -8,7 +8,7 @@
 //! These are the JSON-serializable config types used by `moduleTypeProvider`
 //! and `installTypeConfig` to describe module/function/hook types.
 
-use indexmap::IndexMap;
+use react_compiler_utils::FxIndexMap;
 
 use crate::Effect;
 
@@ -166,7 +166,7 @@ pub enum TypeConfig {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ObjectTypeConfig {
-    pub properties: Option<IndexMap<String, TypeConfig>>,
+    pub properties: Option<FxIndexMap<String, TypeConfig>>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

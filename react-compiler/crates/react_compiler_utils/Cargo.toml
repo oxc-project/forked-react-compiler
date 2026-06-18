@@ -8,6 +8,7 @@ repository.workspace = true
 publish = true
 
 [dependencies]
+rustc-hash = "2"
 indexmap = "2"
 
 [lib]

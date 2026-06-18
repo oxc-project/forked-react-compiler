@@ -7,7 +7,8 @@
 //!
 //! Contains feature flags and custom hook definitions that control compiler behavior.
 
-use std::collections::HashMap;
+use react_compiler_utils::FxIndexMap;
+use rustc_hash::FxHashMap;
 
 use serde::Serialize;
 
@@ -76,12 +77,12 @@ impl Default for ExhaustiveEffectDepsMode {
 pub struct EnvironmentConfig {
     /// Custom hook type definitions, keyed by hook name.
     #[serde(default)]
-    pub custom_hooks: HashMap<String, HookConfig>,
+    pub custom_hooks: FxHashMap<String, HookConfig>,
 
     /// Pre-resolved module type provider results.
     /// Map from module name to TypeConfig, computed by the JS shim.
     #[serde(default)]
-    pub module_type_provider: Option<indexmap::IndexMap<String, TypeConfig>>,
+    pub module_type_provider: Option<FxIndexMap<String, TypeConfig>>,
 
     /// Custom macro-like function names that should have their operands
     /// memoized in the same scope (similar to fbt).
@@ -168,7 +169,7 @@ pub struct EnvironmentConfig {
 impl Default for EnvironmentConfig {
     fn default() -> Self {
         Self {
-            custom_hooks: HashMap::new(),
+            custom_hooks: FxHashMap::default(),
             enable_reset_cache_on_source_file_changes: None,
             module_type_provider: None,
             enable_preserve_existing_memoization_guarantees: true,
