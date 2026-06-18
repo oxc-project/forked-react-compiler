@@ -8,6 +8,7 @@ repository.workspace = true
 publish = true
 
 [dependencies]
+rustc-hash = "2"
 react_compiler_diagnostics = { workspace = true }
 react_compiler_hir = { workspace = true }
 react_compiler_ssa = { workspace = true }

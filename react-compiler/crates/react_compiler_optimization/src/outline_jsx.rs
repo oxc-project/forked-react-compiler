@@ -8,9 +8,10 @@
 //! Outlines JSX expressions in callbacks into separate component functions.
 //! This pass is conditional on `env.config.enable_jsx_outlining` (defaults to false).
 
-use std::collections::{HashMap, HashSet};
+use react_compiler_utils::FxIndexSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
-use indexmap::IndexMap;
+use react_compiler_utils::FxIndexMap;
 use react_compiler_hir::environment::Environment;
 use react_compiler_hir::{
     BasicBlock, BlockId, BlockKind, EvaluationOrder, FunctionId, HIR, HirFunction, IdentifierId,
@@ -58,7 +59,7 @@ fn outline_jsx_impl(
     outlined_fns: &mut Vec<HirFunction>,
 ) {
     // Collect LoadGlobal instructions (tag -> instr)
-    let mut globals: HashMap<IdentifierId, usize> = HashMap::new(); // id -> instr_idx
+    let mut globals: FxHashMap<IdentifierId, usize> = FxHashMap::default(); // id -> instr_idx
 
     // Process each block
     let block_ids: Vec<BlockId> = func.body.blocks.keys().copied().collect();
@@ -66,9 +67,9 @@ fn outline_jsx_impl(
         let block = &func.body.blocks[block_id];
         let instr_ids = block.instructions.clone();
 
-        let mut rewrite_instr: HashMap<EvaluationOrder, Vec<Instruction>> = HashMap::new();
+        let mut rewrite_instr: FxHashMap<EvaluationOrder, Vec<Instruction>> = FxHashMap::default();
         let mut jsx_group: Vec<JsxInstrInfo> = Vec::new();
-        let mut children_ids: HashSet<IdentifierId> = HashSet::new();
+        let mut children_ids: FxHashSet<IdentifierId> = FxHashSet::default();
 
         // First pass: collect all instruction info without borrowing func mutably
         enum InstrAction {
@@ -211,8 +212,8 @@ fn process_and_outline_jsx(
     func: &mut HirFunction,
     env: &mut Environment,
     jsx_group: &mut Vec<JsxInstrInfo>,
-    globals: &HashMap<IdentifierId, usize>,
-    rewrite_instr: &mut HashMap<EvaluationOrder, Vec<Instruction>>,
+    globals: &FxHashMap<IdentifierId, usize>,
+    rewrite_instr: &mut FxHashMap<EvaluationOrder, Vec<Instruction>>,
     outlined_fns: &mut Vec<HirFunction>,
 ) {
     if jsx_group.len() <= 1 {
@@ -237,7 +238,7 @@ fn process_jsx_group(
     func: &HirFunction,
     env: &mut Environment,
     jsx_group: &[JsxInstrInfo],
-    globals: &HashMap<IdentifierId, usize>,
+    globals: &FxHashMap<IdentifierId, usize>,
 ) -> Option<OutlinedResult> {
     // Only outline in callbacks, not top-level components
     if func.fn_type == ReactFunctionType::Component {
@@ -266,9 +267,9 @@ fn collect_props(
     jsx_group: &[JsxInstrInfo],
 ) -> Option<Vec<OutlinedJsxAttribute>> {
     let mut id_counter = 1u32;
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: FxHashSet<String> = FxHashSet::default();
     let mut attributes = Vec::new();
-    let jsx_ids: HashSet<IdentifierId> = jsx_group.iter().map(|j| j.lvalue_id).collect();
+    let jsx_ids: FxHashSet<IdentifierId> = jsx_group.iter().map(|j| j.lvalue_id).collect();
 
     let mut generate_name = |old_name: &str, _env: &mut Environment| -> String {
         let mut new_name = old_name.to_string();
@@ -402,7 +403,7 @@ fn emit_outlined_fn(
     env: &mut Environment,
     jsx_group: &[JsxInstrInfo],
     old_props: &[OutlinedJsxAttribute],
-    globals: &HashMap<IdentifierId, usize>,
+    globals: &FxHashMap<IdentifierId, usize>,
 ) -> Option<HirFunction> {
     let old_to_new_props = create_old_to_new_props_mapping(env, old_props);
 
@@ -458,7 +459,7 @@ fn emit_outlined_fn(
         kind: BlockKind::Block,
         id: BlockId(0),
         instructions: instr_ids,
-        preds: indexmap::IndexSet::new(),
+        preds: FxIndexSet::default(),
         terminal: Terminal::Return {
             value: last_lvalue,
             return_variant: ReturnVariant::Explicit,
@@ -469,7 +470,7 @@ fn emit_outlined_fn(
         phis: Vec::new(),
     };
 
-    let mut blocks = IndexMap::new();
+    let mut blocks = FxIndexMap::default();
     blocks.insert(BlockId(0), block);
 
     let outlined_fn = HirFunction {
@@ -498,7 +499,7 @@ fn emit_outlined_fn(
 fn emit_load_globals(
     func: &HirFunction,
     jsx_group: &[JsxInstrInfo],
-    globals: &HashMap<IdentifierId, usize>,
+    globals: &FxHashMap<IdentifierId, usize>,
 ) -> Option<Vec<Instruction>> {
     let mut instructions = Vec::new();
     for info in jsx_group {
@@ -516,9 +517,9 @@ fn emit_load_globals(
 fn emit_updated_jsx(
     func: &HirFunction,
     jsx_group: &[JsxInstrInfo],
-    old_to_new_props: &IndexMap<IdentifierId, OutlinedJsxAttribute>,
+    old_to_new_props: &FxIndexMap<IdentifierId, OutlinedJsxAttribute>,
 ) -> Vec<Instruction> {
-    let jsx_ids: HashSet<IdentifierId> = jsx_group.iter().map(|j| j.lvalue_id).collect();
+    let jsx_ids: FxHashSet<IdentifierId> = jsx_group.iter().map(|j| j.lvalue_id).collect();
     let mut new_instrs = Vec::new();
 
     for info in jsx_group {
@@ -594,8 +595,8 @@ fn emit_updated_jsx(
 fn create_old_to_new_props_mapping(
     env: &mut Environment,
     old_props: &[OutlinedJsxAttribute],
-) -> IndexMap<IdentifierId, OutlinedJsxAttribute> {
-    let mut old_to_new = IndexMap::new();
+) -> FxIndexMap<IdentifierId, OutlinedJsxAttribute> {
+    let mut old_to_new = FxIndexMap::default();
 
     for old_prop in old_props {
         if old_prop.original_name == "key" {
@@ -629,7 +630,7 @@ fn create_old_to_new_props_mapping(
 fn emit_destructure_props(
     env: &mut Environment,
     props_obj: &Place,
-    old_to_new_props: &IndexMap<IdentifierId, OutlinedJsxAttribute>,
+    old_to_new_props: &FxIndexMap<IdentifierId, OutlinedJsxAttribute>,
 ) -> Instruction {
     let mut properties = Vec::new();
     for prop in old_to_new_props.values() {
