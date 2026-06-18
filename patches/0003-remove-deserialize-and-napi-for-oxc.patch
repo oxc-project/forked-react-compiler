@@ -3510,10 +3510,10 @@ index 042802ac7..ecca14873 100644
      #[serde(default)]
      pub enable_verbose_no_set_state_in_effect: bool,
 diff --git a/react-compiler/crates/react_compiler_hir/src/lib.rs b/react-compiler/crates/react_compiler_hir/src/lib.rs
-index 8e5c6f48e..0dba3fb85 100644
+index b629b0fb2..6cbc787e2 100644
 --- a/react-compiler/crates/react_compiler_hir/src/lib.rs
 +++ b/react-compiler/crates/react_compiler_hir/src/lib.rs
-@@ -1039,7 +1039,7 @@ impl IdentifierName {
+@@ -1036,7 +1036,7 @@ impl IdentifierName {
      }
  }
  
@@ -3759,16 +3759,13 @@ index e9588040d..000000000
 -    }
 -}
 diff --git a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
-index c3e634215..f4b42be9a 100644
+index 8912af5a9..fe577b37a 100644
 --- a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
 +++ b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
-@@ -4205,94 +4205,3 @@ fn apply_renames_to_json_inner(
-         _ => {}
-     }
- }
--
--#[cfg(test)]
--mod tests {
+@@ -4205,14 +4205,6 @@ fn apply_renames_to_json_inner(
+ 
+ #[cfg(test)]
+ mod tests {
 -    use react_compiler_ast::OriginalNode;
 -    use react_compiler_ast::expressions::Expression;
 -    use react_compiler_ast::patterns::PatternLike;
@@ -3776,6 +3773,14 @@ index c3e634215..f4b42be9a 100644
 -    use serde_json::json;
 -
 -    use super::{UnsupportedOriginalNode, codegen_unsupported_original_node};
+-
+     /// The Fast Refresh source hash must match Node's
+     /// `createHmac('sha256', code).digest('hex')` byte-for-byte, or hot-reload
+     /// cache invalidation would diverge from the TS compiler. Reference values
+@@ -4233,84 +4225,4 @@ mod tests {
+             "d637acb4985c789d6622c70197db2b62dda282f16f3276aa810b598d6e6cab7b"
+         );
+     }
 -
 -    // Tests build the typed `OriginalNode` via serde (test-only — never linked
 -    // into the compiler binary), mirroring the typed node lowering captures.
@@ -3856,7 +3861,7 @@ index c3e634215..f4b42be9a 100644
 -            }
 -        }
 -    }
--}
+ }
 diff --git a/react-compiler/packages/babel-plugin-react-compiler-rust/native/.gitignore b/react-compiler/packages/babel-plugin-react-compiler-rust/native/.gitignore
 deleted file mode 100644
 index 0eb56da7f..000000000

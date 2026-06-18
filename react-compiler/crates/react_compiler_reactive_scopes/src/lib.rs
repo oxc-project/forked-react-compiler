@@ -16,9 +16,6 @@ mod build_reactive_function;
 pub mod codegen_reactive_function;
 mod extract_scope_declarations_from_destructuring;
 mod merge_reactive_scopes_that_invalidate_together;
-/// Debug-only: the reactive-function printer depends on `react_compiler_hir::print`,
-/// which is compiled out of release builds (see `react_compiler::debug_print`).
-#[cfg(debug_assertions)]
 pub mod print_reactive_function;
 mod promote_used_temporaries;
 mod propagate_early_returns;
@@ -39,7 +36,6 @@ pub use build_reactive_function::build_reactive_function;
 pub use codegen_reactive_function::codegen_function;
 pub use extract_scope_declarations_from_destructuring::extract_scope_declarations_from_destructuring;
 pub use merge_reactive_scopes_that_invalidate_together::merge_reactive_scopes_that_invalidate_together;
-#[cfg(debug_assertions)]
 pub use print_reactive_function::debug_reactive_function;
 pub use promote_used_temporaries::promote_used_temporaries;
 pub use propagate_early_returns::propagate_early_returns;

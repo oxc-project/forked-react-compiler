@@ -253,44 +253,6 @@ impl ProgramContext {
         self.ordered_log.push(OrderedLogItem::Debug { entry });
     }
 
-    /// Log the reactive-function HIR dump for a pipeline pass, when debug logging
-    /// is enabled. Compiled out of release builds: it pulls in the debug-only
-    /// reactive printer and `PrintFormatter` (see `crate::debug_print`).
-    #[cfg(debug_assertions)]
-    pub fn debug_reactive(
-        &mut self,
-        name: &str,
-        func: &react_compiler_hir::ReactiveFunction,
-        env: &react_compiler_hir::environment::Environment,
-    ) {
-        if !self.debug_enabled {
-            return;
-        }
-        self.timing.start(&format!("debug_print:{name}"));
-        let hir_formatter = |fmt: &mut react_compiler_hir::print::PrintFormatter,
-                             f: &react_compiler_hir::HirFunction| {
-            crate::debug_print::format_hir_function_into(fmt, f);
-        };
-        let dump = react_compiler_reactive_scopes::print_reactive_function::debug_reactive_function_with_formatter(
-            func,
-            env,
-            Some(&hir_formatter),
-        );
-        self.log_debug(DebugLogEntry::new(name, dump));
-        self.timing.stop();
-    }
-
-    /// Release stub: the reactive debug printer is compiled out of release builds.
-    #[cfg(not(debug_assertions))]
-    #[inline(always)]
-    pub fn debug_reactive(
-        &mut self,
-        _name: &str,
-        _func: &react_compiler_hir::ReactiveFunction,
-        _env: &react_compiler_hir::environment::Environment,
-    ) {
-    }
-
     /// Check if there are any pending imports to add to the program.
     pub fn has_pending_imports(&self) -> bool {
         !self.imports.is_empty()

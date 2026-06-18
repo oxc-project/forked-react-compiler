@@ -128,10 +128,10 @@ index 1f67d4c43..9617d4634 100644
  indexmap = { version = "2", features = ["serde"] }
  serde = { version = "1", features = ["derive"] }
 diff --git a/react-compiler/crates/react_compiler_hir/src/lib.rs b/react-compiler/crates/react_compiler_hir/src/lib.rs
-index fd4a34ae9..8e5c6f48e 100644
+index 07db07725..b629b0fb2 100644
 --- a/react-compiler/crates/react_compiler_hir/src/lib.rs
 +++ b/react-compiler/crates/react_compiler_hir/src/lib.rs
-@@ -782,8 +782,8 @@ pub enum InstructionValue {
+@@ -779,8 +779,8 @@ pub enum InstructionValue {
      },
      UnsupportedNode {
          node_type: Option<String>,
@@ -551,7 +551,7 @@ index 5901e79d2..e9588040d 100644
 +    }
  }
 diff --git a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
-index ed2bc961e..c3e634215 100644
+index 98aa39358..8912af5a9 100644
 --- a/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
 +++ b/react-compiler/crates/react_compiler_reactive_scopes/src/codegen_reactive_function.rs
 @@ -13,6 +13,7 @@
@@ -575,18 +575,7 @@ index ed2bc961e..c3e634215 100644
  use react_compiler_diagnostics::CompilerDiagnostic;
  use react_compiler_diagnostics::CompilerDiagnosticDetail;
  use react_compiler_diagnostics::CompilerError;
-@@ -388,7 +387,9 @@ pub fn codegen_function(
-                                                     arguments: vec![Expression::StringLiteral(
-                                                         StringLiteral {
-                                                             base: BaseNode::typed("StringLiteral"),
--                                                            value: MEMO_CACHE_SENTINEL.to_string().into(),
-+                                                            value: MEMO_CACHE_SENTINEL
-+                                                                .to_string()
-+                                                                .into(),
-                                                         },
-                                                     )],
-                                                     type_parameters: None,
-@@ -1566,49 +1567,25 @@ enum UnsupportedOriginalNode {
+@@ -1565,49 +1564,25 @@ enum UnsupportedOriginalNode {
      ExpressionCodegen,
  }
  
@@ -653,7 +642,7 @@ index ed2bc961e..c3e634215 100644
  }
  
  fn codegen_instruction_nullable(
-@@ -1645,7 +1622,7 @@ fn codegen_instruction_nullable(
+@@ -1644,7 +1619,7 @@ fn codegen_instruction_nullable(
                  // lvalue temporaries (the regression the explicit dispatch
                  // below prevents; TS codegen's equivalent check is
                  // `if (!t.isExpression(node)) return node; value = node`).
@@ -662,7 +651,7 @@ index ed2bc961e..c3e634215 100644
                      UnsupportedOriginalNode::Statement(stmt) => return Ok(Some(stmt)),
                      UnsupportedOriginalNode::ExpressionCodegen => {
                          // Expression (or pattern) node — fall through to the
-@@ -2593,32 +2570,23 @@ fn codegen_base_instruction_value(
+@@ -2592,32 +2567,23 @@ fn codegen_base_instruction_value(
              node_type,
              ..
          } => {
@@ -711,7 +700,7 @@ index ed2bc961e..c3e634215 100644
          }
          InstructionValue::StartMemoize { .. }
          | InstructionValue::FinishMemoize { .. }
-@@ -4240,82 +4208,90 @@ fn apply_renames_to_json_inner(
+@@ -4239,6 +4205,9 @@ fn apply_renames_to_json_inner(
  
  #[cfg(test)]
  mod tests {
@@ -721,7 +710,9 @@ index ed2bc961e..c3e634215 100644
      use react_compiler_ast::statements::Statement;
      use serde_json::json;
  
-     use super::{UnsupportedOriginalNode, codegen_unsupported_original_node};
+@@ -4265,77 +4234,82 @@ mod tests {
+         );
+     }
  
 -    /// A modeled statement tag parses typed and is emitted directly.
 +    // Tests build the typed `OriginalNode` via serde (test-only — never linked
