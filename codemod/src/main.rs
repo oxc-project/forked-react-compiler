@@ -11,8 +11,9 @@
 //!   - inherits version/edition/license/description/repository from `[workspace.package]`
 //!   - internal deps become `{ workspace = true }`
 //!   - `publish` = true for `react_compiler` and its (transitive) deps; false for the rest
+//!
 //! Root `[workspace.dependencies]` maps each import name to its published package:
-//!   `react_compiler_X = { package = "forked_react_compiler_X", version, path }`
+//! `react_compiler_X = { package = "forked_react_compiler_X", version, path }`
 //!
 //! Usage: `codemod [TREE_DIR]`   (default: `react-compiler`)
 
@@ -71,7 +72,9 @@ fn main() {
     // Version to stamp on `[workspace.package]` and every inter-crate dep. Passed
     // by `just sync`/`just codemod`, which read it from the current `Cargo.toml`
     // so `cargo-release-oxc` remains the only thing that bumps it.
-    let version = std::env::args().nth(2).unwrap_or_else(|| "0.1.0".to_string());
+    let version = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "0.1.0".to_string());
 
     let members = members(&root);
     let internal: BTreeSet<&str> = members.iter().map(|m| m.import_name.as_str()).collect();
@@ -124,7 +127,13 @@ fn members(root: &Path) -> Vec<Member> {
                 let import_name = raw.strip_prefix("forked_").unwrap_or(&raw).to_string();
                 let package_name = format!("forked_{import_name}");
                 let has_lib = root.join(&rel_path).join("src/lib.rs").exists();
-                out.push(Member { import_name, package_name, rel_path, manifest, has_lib });
+                out.push(Member {
+                    import_name,
+                    package_name,
+                    rel_path,
+                    manifest,
+                    has_lib,
+                });
             }
         }
     }
@@ -160,9 +169,7 @@ fn edit_root_manifest(root: &Path, members: &[Member], version: &str) {
         dependencies.insert(&member.import_name, value(dep));
     }
 
-    let workspace = doc["workspace"]
-        .as_table_mut()
-        .expect("[workspace] table");
+    let workspace = doc["workspace"].as_table_mut().expect("[workspace] table");
     workspace.insert("package", Item::Table(package));
     workspace.insert("dependencies", Item::Table(dependencies));
 
