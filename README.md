@@ -14,3 +14,11 @@ crates.io, so this repo vendors it, patches the crates to be releasable, and pub
 `forked_react_compiler_*`.
 
 The source is synced over unchanged — the only edits are to `Cargo.toml` files (no code changes).
+
+## ❤ Who's [Sponsoring Oxc](https://github.com/sponsors/Boshen)?
+
+<p align="center">
+  <a href="https://github.com/sponsors/Boshen">
+    <img src="https://raw.githubusercontent.com/Boshen/sponsors/main/sponsors.svg" alt="Our sponsors" />
+  </a>
+</p>
