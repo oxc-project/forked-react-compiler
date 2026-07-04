@@ -21,7 +21,7 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
+use toml_edit::{DocumentMut, InlineTable, Item, Table, Value, value};
 
 // The published version is passed in as the 2nd CLI arg (see `main`) rather than
 // hardcoded here, so `cargo-release-oxc` stays the single source of truth and a
@@ -63,18 +63,13 @@ struct Member {
 }
 
 fn main() {
-    let root = PathBuf::from(
-        std::env::args()
-            .nth(1)
-            .unwrap_or_else(|| "react-compiler".to_string()),
-    );
+    let root =
+        PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| "react-compiler".to_string()));
 
     // Version to stamp on `[workspace.package]` and every inter-crate dep. Passed
     // by `just sync`/`just codemod`, which read it from the current `Cargo.toml`
     // so `cargo-release-oxc` remains the only thing that bumps it.
-    let version = std::env::args()
-        .nth(2)
-        .unwrap_or_else(|| "0.1.0".to_string());
+    let version = std::env::args().nth(2).unwrap_or_else(|| "0.1.0".to_string());
 
     let members = members(&root);
     let internal: BTreeSet<&str> = members.iter().map(|m| m.import_name.as_str()).collect();
@@ -99,10 +94,7 @@ fn main() {
 /// Resolve workspace `members` (expanding a trailing `/*`) to `Member`s, sorted by import name.
 fn members(root: &Path) -> Vec<Member> {
     let doc = read_doc(&root.join("Cargo.toml"));
-    let entries = doc
-        .get("workspace")
-        .and_then(|w| w.get("members"))
-        .and_then(Item::as_array);
+    let entries = doc.get("workspace").and_then(|w| w.get("members")).and_then(Item::as_array);
 
     let mut out = Vec::new();
     let Some(entries) = entries else {
@@ -127,13 +119,7 @@ fn members(root: &Path) -> Vec<Member> {
                 let import_name = raw.strip_prefix("forked_").unwrap_or(&raw).to_string();
                 let package_name = format!("forked_{import_name}");
                 let has_lib = root.join(&rel_path).join("src/lib.rs").exists();
-                out.push(Member {
-                    import_name,
-                    package_name,
-                    rel_path,
-                    manifest,
-                    has_lib,
-                });
+                out.push(Member { import_name, package_name, rel_path, manifest, has_lib });
             }
         }
     }
@@ -270,12 +256,7 @@ fn workspace_dep(old: &Item) -> Item {
         let existing = old
             .as_inline_table()
             .and_then(|t| t.get(key).cloned())
-            .or_else(|| {
-                old.as_table()
-                    .and_then(|t| t.get(key))
-                    .and_then(Item::as_value)
-                    .cloned()
-            });
+            .or_else(|| old.as_table().and_then(|t| t.get(key)).and_then(Item::as_value).cloned());
         if let Some(v) = existing {
             dep.insert(key, v);
         }
