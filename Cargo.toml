@@ -4,3 +4,9 @@
 resolver = "2"
 members = ["codemod"]
 exclude = ["react-compiler"]
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
